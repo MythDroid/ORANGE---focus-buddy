@@ -45,6 +45,30 @@ v1.0 runs on a Windows laptop. Later it moves to a Raspberry Pi 5.
    ```
    You should see `Orange setup OK`.
 
+## Wake word
+
+Orange sleeps until it hears the wake word (default: **"Hey Jarvis"**). This runs fully
+offline: a small model on your CPU scores each 80 ms of audio, and nothing is saved or sent.
+Set `wake.show_scores: true` in `config.yaml` to see live scores and tune `wake.threshold`.
+
+### Custom wake word (e.g. "Hey Orange")
+
+openWakeWord models are trained on **synthetic speech**, so you don't record yourself thousands of times:
+
+1. A text-to-speech engine generates thousands of clips of the phrase ("hey orange")
+   in many different voices, speeds and accents.
+2. The clips are mixed with background noise and room echo, so the model works in real rooms.
+3. Lots of "negative" audio (normal talk, music, noise) teaches it what is NOT the wake word.
+4. A small classifier is trained on top of openWakeWord's shared speech-feature model.
+   The result is a single small `.onnx` file.
+
+The openWakeWord GitHub repo has a training notebook for this
+(https://github.com/dscripka/openWakeWord, see "Training New Models"). It runs on Google Colab's free GPU.
+
+To use your model:
+1. Put the file at `models/hey_orange.onnx`. Note that `models/` is in `.gitignore`.
+2. In `config.yaml`, set `wake.model: "models/hey_orange.onnx"`.
+
 ## Project layout
 
 ```

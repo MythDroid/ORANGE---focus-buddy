@@ -35,7 +35,11 @@ This file is the source of truth for big decisions. Update it when a decision ch
 ## Voice
 
 - Text-to-speech: pyttsx3 now; Piper later (swap by changing `speak.engine` in config).
-- Wake word: openWakeWord built-in `hey_jarvis` for now; custom "hey orange" later.
+- **Wake word decision: "Hey Orange".** `hey_jarvis` (openWakeWord built-in) is only a
+  TEMPORARY placeholder until then.
+- **Phase 5.5 (right after Phase 5):** train a custom `hey_orange.onnx` with openWakeWord's
+  training notebook, put it at `models/hey_orange.onnx`, and set
+  `wake.model: "models/hey_orange.onnx"`. Uses ONNX, which works on Windows and the Pi.
 - Speech-to-text: faster-whisper `base.en` (CPU, int8). Chosen over small.en because, with the
   hint, it was just as accurate in testing and ~3x faster (laptop: base.en ~0.8 s per sentence,
   small.en ~2.5 s). Accuracy for names comes from the prompt: `user.name` + `assistant.name` +

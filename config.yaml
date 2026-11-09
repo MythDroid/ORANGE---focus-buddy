@@ -8,8 +8,13 @@ user:
   name: "Mythrayee"            # Your name. Also helps speech-to-text spell it right
 
 wake:
-  model: "hey_jarvis"          # Built-in openWakeWord model (a custom "hey orange" can come later)
+  # TEMPORARY placeholder. Real wake word = "Hey Orange" (trained in Phase 5.5),
+  # then this becomes "models/hey_orange.onnx". Built-in name OR path to a model file.
+  model: "hey_jarvis"
   threshold: 0.5               # 0-1. Higher = fewer false triggers, but you may need to speak clearer
+  chunk_samples: 1280          # openWakeWord wants 80 ms chunks: 16000 samples/s x 0.08 s = 1280
+  inference_framework: "onnx"  # "onnx" works on Windows AND the Pi ("tflite" is Linux-only)
+  show_scores: false           # true = print live scores while you talk (helps tune the threshold)
 
 audio:
   sample_rate: 16000           # 16 kHz: what both openWakeWord and Whisper expect

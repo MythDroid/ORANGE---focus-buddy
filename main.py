@@ -1,4 +1,4 @@
-"""Orange - entry point. Says hello, then: press Enter -> record -> print what you said."""
+"""Orange - entry point. Wake word -> "Yes?" -> record -> print what you said -> sleep."""
 import os
 import sys
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-from orange import listen, speak, stt
+from orange import listen, speak, stt, wake
 
 # Make sure emoji status lines (🔴 / ⚪) print on any Windows terminal.
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -37,19 +37,26 @@ def main():
     # Load Whisper ONCE here, not on every sentence. Names help it spell them right.
     stt.init(config["stt"], names=[config["user"]["name"], config["assistant"]["name"]])
 
-    speak.say("Hi, I'm Orange!")
+    print(f"Loading wake word model '{config['wake']['model']}'...")
+    wake.init(config["wake"], config["audio"])
 
-    # Phase 3: press Enter -> record -> print what you said
-    while True:
-        if input("\nPress Enter to talk (q + Enter to quit): ").strip().lower() == "q":
-            break
-        audio = listen.record(config["audio"])
-        if audio is None:
-            continue  # Nothing heard; listen.record already said so
-        print("Transcribing...")
-        text = stt.transcribe(audio)
-        print(f"You said: {text or '(could not make out any words)'}")
-        # 'audio' is replaced next loop and never written to disk.
+    speak.say("Hi, I'm Orange!")
+    print("\nSay 'Hey Jarvis' to wake me. Press Ctrl+C to quit.")
+
+    # Phase 4: wake word -> "Yes?" -> record -> print text -> back to sleep
+    try:
+        while True:
+            wake.wait_for_wake_word()  # Sleeps here until the wake word; its mic is closed after
+            speak.say("Yes?")
+            audio = listen.record(config["audio"])
+            if audio is None:
+                continue  # Nothing heard; go back to waiting for the wake word
+            print("Transcribing...")
+            text = stt.transcribe(audio)
+            print(f"You said: {text or '(could not make out any words)'}\n")
+            # 'audio' is replaced next loop and never written to disk.
+    except KeyboardInterrupt:
+        print("\nBye!")  # Ctrl+C lands here; the mic was already closed by "finally"
 
 
 if __name__ == "__main__":
