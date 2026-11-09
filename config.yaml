@@ -25,7 +25,19 @@ vision:
   camera_index: 0              # 0 = first webcam. Try 1 if you have a second camera
 
 brain:
-  model: "claude-sonnet-5-5"   # Claude model to use
+  # PLACEHOLDERS - wired up in Phase 5 (via LiteLLM). Model names get checked then.
+  # Providers you can pick: "gemini", "groq", "ollama", "claude"
+  # Keys for gemini/groq/claude go in .env. Ollama runs locally and needs no key.
+
+  chat:                        # Answers normal questions (text only)
+    provider: "gemini"         # Free tier, so no cost for a student
+    model: "gemini-2.5-flash"  # Fast, free-tier Gemini model
+
+  vision:                      # Answers questions about camera photos
+    provider: "ollama"         # Runs ON your laptop, so photos never leave it
+    model: "moondream"         # Small vision model; light enough for the Pi later
+
+  ollama_url: "http://localhost:11434"  # Where the local Ollama app listens
   max_tokens: 300              # Cap reply length. Short answers suit spoken replies
 
 speak:
