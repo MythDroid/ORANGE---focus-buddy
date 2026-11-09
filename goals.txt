@@ -1,0 +1,5 @@
+# My goals (edit freely - Orange will use this file in a later phase)
+# One goal per line. Lines starting with # are ignored.
+
+Finish my ML assignment this week
+Study 2 hours every day

@@ -1,0 +1,25 @@
+# --- Secrets: NEVER commit these ---
+.env
+
+# --- Virtual environment (rebuilt from requirements.txt, so no need to save it) ---
+venv/
+.venv/
+
+# --- Python cache files (auto-generated) ---
+__pycache__/
+*.pyc
+
+# --- Safety net: Orange keeps audio/photos in memory only, but just in case ---
+*.wav
+*.mp3
+*.jpg
+*.png
+
+# --- Downloaded AI model files (large, re-downloadable) ---
+models/
+
+# --- Editor / OS clutter ---
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
