@@ -1,9 +1,11 @@
-"""Orange - entry point. Phase 1: just checks that setup works."""
+"""Orange - entry point. Checks setup, then says hello."""
 import os
 from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
+
+from orange import speak
 
 # Path(__file__).parent = the folder this file is in, so it works from any directory
 # and on any OS (Windows or Raspberry Pi).
@@ -25,6 +27,10 @@ def main():
     print(f"Config loaded: assistant name = {config['assistant']['name']}")
     print(f"API key found in .env: {'yes' if has_key else 'no (fine for now)'}")
     print("Orange setup OK")
+
+    # Phase 2: text-to-speech
+    speak.init(config["speak"])
+    speak.say("Hi, I'm Orange!")
 
 
 if __name__ == "__main__":
