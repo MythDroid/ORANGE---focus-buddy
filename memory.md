@@ -36,6 +36,11 @@ This file is the source of truth for big decisions. Update it when a decision ch
 
 - Text-to-speech: pyttsx3 now; Piper later (swap by changing `speak.engine` in config).
 - Wake word: openWakeWord built-in `hey_jarvis` for now; custom "hey orange" later.
+- Speech-to-text: faster-whisper `base.en` (CPU, int8). Chosen over small.en because, with the
+  hint, it was just as accurate in testing and ~3x faster (laptop: base.en ~0.8 s per sentence,
+  small.en ~2.5 s). Accuracy for names comes from the prompt: `user.name` + `assistant.name` +
+  `stt.hint`, plus names as hotwords.
+- Mic silence threshold on the laptop: 0.015 (from calibrate.py).
 
 ## Privacy rules (always)
 

@@ -4,6 +4,9 @@
 assistant:
   name: "Orange"               # What Orange calls itself
 
+user:
+  name: "Mythrayee"            # Your name. Also helps speech-to-text spell it right
+
 wake:
   model: "hey_jarvis"          # Built-in openWakeWord model (a custom "hey orange" can come later)
   threshold: 0.5               # 0-1. Higher = fewer false triggers, but you may need to speak clearer
@@ -12,11 +15,19 @@ audio:
   sample_rate: 16000           # 16 kHz: what both openWakeWord and Whisper expect
   channels: 1                  # Mono. One mic channel is all speech recognition needs
   input_device: null           # null = system default mic. Or a device number/name
-  max_record_seconds: 8        # Hard stop so a recording can't run forever
+  block_ms: 30                 # Mic audio is checked in small chunks of this many milliseconds
+  silence_threshold: 0.015     # Volume (RMS) below this counts as silence. Run calibrate.py to tune it
   silence_seconds: 1.5         # Stop recording after this much quiet (you finished talking)
+  no_speech_timeout: 5         # Give up if you don't start talking within this many seconds
+  max_record_seconds: 15       # Hard stop so a recording can't run forever
+  pre_roll_seconds: 0.3        # Keep this much audio from just BEFORE you spoke, so the first word isn't cut
 
 stt:
   model_size: "base.en"        # Whisper size: tiny.en (fastest) / base.en / small.en (most accurate)
+  # Words Whisper should expect (topics, exam names, jargon). Your name and
+  # Orange's name are added in front automatically from user.name / assistant.name.
+  hint: "GATE DA. eigenvalues, eigenvectors, matrix, probability."
+  use_hotwords: true           # Also push the two names as "hotwords" (extra nudge for names)
   device: "cpu"                # "cpu" works everywhere, including the Pi
   compute_type: "int8"         # int8 = smaller and faster on CPU, tiny accuracy loss
 
