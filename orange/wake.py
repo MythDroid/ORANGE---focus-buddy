@@ -37,8 +37,12 @@ def init(wake_cfg, audio_cfg):
                    inference_framework=wake_cfg["inference_framework"])
 
 
-def wait_for_wake_word():
-    """Block until the wake word is heard, then return."""
+def wait_for_wake_word(wake_now=None):
+    """Block until the wake word is heard, then return.
+
+    wake_now: an optional threading.Event. If something sets it (for example a click on
+    Orange), we also return, as if the wake word had been said.
+    """
     if _model is None:
         raise RuntimeError("Call wake.init(...) first.")
 
@@ -56,6 +60,9 @@ def wait_for_wake_word():
                             blocksize=n, device=_audio_cfg["input_device"]) as stream:
             while True:
                 chunk, _ = stream.read(n)
+                if wake_now is not None and wake_now.is_set():
+                    print("Woken by a click")
+                    return
                 # openWakeWord wants a flat array of 16-bit integers.
                 scores = _model.predict(np.ascontiguousarray(chunk[:, 0]))
                 score = max(scores.values())  # We load one model, so one score

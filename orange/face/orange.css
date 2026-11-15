@@ -1,0 +1,540 @@
+/* Orange's looks and movements.
+ *
+ * Read this file in 4 parts:
+ *   1. Colours and shapes   (what Orange looks like)
+ *   2. Always-alive motion  (breathing, antenna sway)
+ *   3. Moods                (what changes for each data-mood)
+ *   4. The preview page     (buttons etc. - hidden in the real pet window)
+ *
+ * Light on the CPU: we only animate "transform" and "opacity". The browser
+ * can do those two without redrawing the shapes, so they are very cheap.
+ */
+
+/* ---------- 1. Colours and shapes ---------- */
+
+#orange {
+  --ink: #C4601A;            /* outline colour */
+  --glow: #FFEBC4;           /* the warm white of the screen face */
+  --look-x: 0px;             /* orange.js changes these two so the eyes follow the mouse */
+  --look-y: 0px;
+  overflow: visible;
+  user-select: none;
+}
+
+.shadow       { fill: rgba(60, 30, 10, .16); }
+.body         { fill: url(#bodyPaint); stroke: var(--ink); stroke-width: 2.5; }
+.gloss        { fill: #fff; opacity: .42; }
+.belly        { fill: #FFD29A; opacity: .7; }
+.ear, .foot   { fill: #F28A30; stroke: var(--ink); stroke-width: 2.5; }
+.arm-shape    { fill: #FFA347; stroke: var(--ink); stroke-width: 2.5; }
+.ant-stalk    { stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; }
+.ant-tip      { fill: #FFB55E; stroke: var(--ink); stroke-width: 2.5; }
+.bezel        { fill: #E3741F; }
+.screen       { fill: #2A1A17; stroke: #1B0F0D; stroke-width: 1.5; }
+.scan         { fill: url(#scanlines); }
+.screen-shine { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; opacity: .13; }
+
+/* Face drawings: "fill" = solid shape, "line" = a glowing stroke */
+.fill  { fill: var(--glow); }
+.line  { fill: none; stroke: var(--glow); stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; }
+.thin  { stroke-width: 2.2; }
+.soft  { stroke: var(--glow); stroke-width: 1.5; stroke-linejoin: round; }
+.blush { fill: #FF8FA0; opacity: .75; }
+
+.pages, .page-flip { fill: #FFF3DA; stroke: #C9A87A; stroke-width: 1; stroke-linejoin: round; }
+.cover       { fill: #6B4030; stroke: #452519; stroke-width: 2; stroke-linejoin: round; }
+.spine       { stroke: #452519; stroke-width: 2; }
+.cover-heart { fill: #FF9E40; }
+
+.zz    { fill: none; stroke: #E3741F; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.qmark path   { fill: none; stroke: #E3741F; stroke-width: 4.2; stroke-linecap: round; stroke-linejoin: round; }
+.qmark circle { fill: #E3741F; stroke: #E3741F; stroke-width: 3; }
+
+.confetti { opacity: 0; }
+
+.timer      { opacity: 0; transition: opacity .3s; }
+.timer.on   { opacity: 1; }
+.timer rect { fill: #2A1A17; opacity: .88; }
+.timer text { fill: #FFEBC4; font: 600 10.5px "Segoe UI", system-ui, sans-serif; }
+
+/* ---------- 2. Always-alive motion ---------- */
+
+/* Squash and stretch happen around the feet (x=100, y=183), so Orange stays on the floor. */
+.bot-tilt   { transform-origin: 100px 183px; transition: transform .55s cubic-bezier(.34, 1.5, .64, 1); }
+.bot-bounce { transform-origin: 100px 183px; animation: breathe 3.4s ease-in-out infinite; }
+.shadow     { transform-origin: 100px 187px; }
+
+@keyframes breathe {           /* breathing in = a bit taller and thinner */
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(.982, 1.022); }
+}
+
+/* Antennas: "ant" = the pose (droop / perk up), "ant-wiggle" = gentle swaying */
+.ant        { transition: transform .5s cubic-bezier(.34, 1.56, .64, 1); }
+.ant-wiggle { animation: sway 2.8s ease-in-out infinite; }
+.ant-r .ant-wiggle { animation-delay: -1.1s; }       /* so the two don't move in sync */
+.ant-tip    { transition: fill .3s; }
+@keyframes sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
+
+/* Face */
+.face      { filter: drop-shadow(0 0 1.6px rgba(255, 214, 140, .95)); transition: opacity .5s; }
+.face-mood { transition: transform .4s ease; }
+.face-look { transform: translate(var(--look-x), var(--look-y)); transition: transform .18s ease-out; }
+.eye       { transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); }
+.lid       { transition: transform .07s ease-in; }
+.blink .lid { transform: scaleY(.08); }              /* orange.js adds "blink" for a moment */
+
+/* Every eye/mouth drawing ("v" = variant) starts hidden and small.
+   The mood rules below turn exactly one of each on, so it fades + pops in. */
+.v { opacity: 0; transform: scale(.55);
+     transition: opacity .2s ease, transform .32s cubic-bezier(.34, 1.56, .64, 1); }
+
+.glasses { opacity: 0; transform: translateY(-7px) scale(1.25);
+           transition: opacity .25s, transform .4s cubic-bezier(.34, 1.56, .64, 1); }
+.twinkle { opacity: 0; transform: scale(0); transition: opacity .2s, transform .3s; }
+
+/* Arms rest a little away from the body */
+/* fill-box + center = "turn around your own middle" (the feet have no wrapper group) */
+.foot  { transform-box: fill-box; transform-origin: center; transition: transform .3s cubic-bezier(.34, 1.56, .64, 1); }
+.arm   { transition: transform .45s cubic-bezier(.34, 1.56, .64, 1); }
+.arm-l { transform: rotate(24deg); }
+.arm-r { transform: rotate(-24deg); }
+
+.book  { opacity: 0; transform: translateY(14px) scale(.4);
+         transition: opacity .25s, transform .45s cubic-bezier(.34, 1.56, .64, 1); }
+.page-flip { opacity: 0; }
+
+.qmark { opacity: 0; transform: scale(.2) rotate(-30deg);
+         transition: opacity .2s, transform .45s cubic-bezier(.34, 1.56, .64, 1); }
+
+/* ---------- 3. Moods ---------- */
+
+/* Which eye drawing is ON in which mood */
+[data-mood="idle"] .e-open, [data-mood="listening"] .e-open,
+[data-mood="focused"] .e-open, [data-mood="confused"] .e-open,
+[data-mood="happy"] .e-happy, [data-mood="celebrating"] .e-happy,
+[data-mood="sleepy"] .e-sleepy,
+[data-mood="sideeye"] .e-flat,
+[data-mood="amazed"] .e-star,
+/* Which mouth drawing is ON in which mood */
+[data-mood="idle"] .m-smile,
+[data-mood="happy"] .m-big, [data-mood="celebrating"] .m-big,
+[data-mood="listening"] .m-wave,
+[data-mood="focused"] .m-flat, [data-mood="sideeye"] .m-flat,
+[data-mood="sleepy"] .m-tiny,
+[data-mood="confused"] .m-wavy,
+[data-mood="amazed"] .m-o { opacity: 1; transform: scale(1); }
+
+/* -- happy: a little hop now and then, antennas wag faster -- */
+[data-mood="happy"] .bot-bounce { animation: hop 1.9s ease-in-out infinite; }
+[data-mood="happy"] .shadow     { animation: shadow-hop 1.9s ease-in-out infinite; }
+[data-mood="happy"] .ant-wiggle { animation-duration: .7s; }
+[data-mood="happy"] .arm-l { transform: rotate(48deg); }
+[data-mood="happy"] .arm-r { transform: rotate(-48deg); }
+[data-mood="happy"] .blush { opacity: 1; }
+@keyframes hop {
+  0%, 46%, 100% { transform: translateY(0) scale(1, 1); }
+  8%  { transform: translateY(0) scale(1.08, .9); }          /* crouch */
+  22% { transform: translateY(-11px) scale(.95, 1.07); }     /* in the air, stretched */
+  34% { transform: translateY(0) scale(1.08, .91); }         /* land, squashed */
+  40% { transform: translateY(0) scale(.98, 1.02); }
+  73% { transform: translateY(0) scale(.985, 1.02); }        /* one calm breath */
+}
+@keyframes shadow-hop { 0%, 34%, 100% { transform: scale(1); opacity: 1; } 22% { transform: scale(.82); opacity: .7; } }
+
+/* -- listening: leans in, eyes wide, antennas straight up with glowing tips -- */
+[data-mood="listening"] .bot-tilt   { transform: translateY(-2px) rotate(3deg) scale(1.03); }
+[data-mood="listening"] .bot-bounce { animation-duration: 2.2s; }
+[data-mood="listening"] .eye        { transform: scale(1.22); }
+[data-mood="listening"] .ant-l      { transform: rotate(11deg); }
+[data-mood="listening"] .ant-r      { transform: rotate(-11deg); }
+[data-mood="listening"] .ant-wiggle { animation: none; }
+[data-mood="listening"] .ant-tip    { animation: tip-pulse 1s ease-in-out infinite; }
+[data-mood="listening"] .arm-l { transform: rotate(40deg); }
+[data-mood="listening"] .arm-r { transform: rotate(-40deg); }
+[data-mood="listening"] .bar   { animation: bar .7s ease-in-out infinite; }
+[data-mood="listening"] .bar:nth-child(1) { animation-delay: -.10s; }
+[data-mood="listening"] .bar:nth-child(2) { animation-delay: -.45s; }
+[data-mood="listening"] .bar:nth-child(3) { animation-delay: -.25s; }
+[data-mood="listening"] .bar:nth-child(4) { animation-delay: -.60s; }
+[data-mood="listening"] .bar:nth-child(5) { animation-delay: -.35s; }
+@keyframes bar       { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+@keyframes tip-pulse { 0%, 100% { fill: #FFB55E; } 50% { fill: #FFF3B8; } }
+
+/* -- focused: glasses on, looks down at a tiny book, turns a page sometimes -- */
+[data-mood="focused"] .bot-bounce { animation-duration: 4.4s; }
+[data-mood="focused"] .face-mood  { transform: translateY(4px); }
+[data-mood="focused"] .eye        { transform: scale(.82); }
+[data-mood="focused"] .glasses    { opacity: 1; transform: none; }
+[data-mood="focused"] .book       { opacity: 1; transform: none; }
+[data-mood="focused"] .book-bob   { animation: book-bob 4.4s ease-in-out infinite; }
+[data-mood="focused"] .page-flip  { animation: page-flip 6s ease-in-out infinite; }
+[data-mood="focused"] .arm-l { transform: rotate(-58deg); }
+[data-mood="focused"] .arm-r { transform: rotate(58deg); }
+[data-mood="focused"] .ant-wiggle { animation-duration: 4.4s; }
+@keyframes book-bob  { 0%, 100% { transform: rotate(0); } 50% { transform: translateY(-1px) rotate(-1.5deg); } }
+@keyframes page-flip {
+  0%, 78% { opacity: 0; transform: scaleX(1); }
+  80%     { opacity: 1; transform: scaleX(1); }
+  88%     { opacity: 1; transform: translateY(-3px) scaleX(0); }   /* page is edge-on, mid flip */
+  96%     { opacity: 1; transform: scaleX(-1); }
+  100%    { opacity: 0; transform: scaleX(-1); }
+}
+
+/* -- sleepy: screen dims, slow sway, antennas droop, z z z -- */
+[data-mood="sleepy"] .bot-bounce { animation: doze 5.5s ease-in-out infinite; }
+[data-mood="sleepy"] .face       { opacity: .6; }
+[data-mood="sleepy"] .face-mood  { transform: translateY(3px); }
+[data-mood="sleepy"] .ant-l      { transform: rotate(-105deg); }   /* hanging down */
+[data-mood="sleepy"] .ant-r      { transform: rotate(105deg); }
+[data-mood="sleepy"] .ant-wiggle { animation-duration: 5.5s; }
+[data-mood="sleepy"] .arm-l { transform: rotate(12deg); }
+[data-mood="sleepy"] .arm-r { transform: rotate(-12deg); }
+[data-mood="sleepy"] .m-tiny { animation: snore 5.5s ease-in-out infinite; }
+[data-mood="sleepy"] .zz { animation: z-float 3.3s linear infinite; }
+[data-mood="sleepy"] .z2 { animation-delay: 1.1s; }
+[data-mood="sleepy"] .z3 { animation-delay: 2.2s; }
+@keyframes doze {
+  0%, 100% { transform: rotate(0) scale(1, 1); }
+  25%      { transform: rotate(-2.5deg) scale(1.02, .975); }
+  75%      { transform: rotate(2.5deg) scale(.985, 1.02); }
+}
+@keyframes snore   { 0%, 100% { transform: scale(.8); } 50% { transform: scale(1.35); } }
+@keyframes z-float {
+  0%   { opacity: 0; transform: translate(0, 0) scale(.5); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(16px, -32px) scale(1.5); }
+}
+
+/* -- confused: staggers around dizzy, then plops down on its bottom with a "?" --
+   Two animations in a row: "stagger" plays once (1.9 s), then "sit-bob" loops while it sits.
+   The feet and the "?" wait 1.75 s (transition-delay) so they change at the moment of the plop. */
+[data-mood="confused"] .bot-bounce { animation: stagger 1.9s ease-in-out 1 forwards, sit-bob 2.6s ease-in-out 1.9s infinite; }
+[data-mood="confused"] .shadow     { transform: scaleX(1.12); transition: transform .3s 1.75s; }
+[data-mood="confused"] .foot       { transition-delay: 1.75s; }
+[data-mood="confused"] .foot-l     { transform: translate(-10px, -2px) rotate(-18deg); }   /* legs stick out */
+[data-mood="confused"] .foot-r     { transform: translate(10px, -2px) rotate(18deg); }
+[data-mood="confused"] .eye-l    { transform: scale(1.15); }
+[data-mood="confused"] .eye-r    { transform: translateY(1px) scale(.72); }
+[data-mood="confused"] .ant-r    { transform: rotate(100deg); }
+[data-mood="confused"] .ant-wiggle { animation-duration: .9s; }
+[data-mood="confused"] .arm-l    { transform: rotate(50deg); }
+[data-mood="confused"] .arm-r    { transform: rotate(-70deg); }
+[data-mood="confused"] .qmark    { opacity: 1; transform: none; transition-delay: 1.85s;
+                                   animation: q-bob 1.6s ease-in-out 2.4s infinite; }
+@keyframes stagger {
+  0%   { transform: none; }
+  14%  { transform: translateX(-9px) rotate(-10deg); }
+  30%  { transform: translateX(7px) rotate(8deg); }
+  46%  { transform: translateX(-11px) rotate(-12deg); }
+  62%  { transform: translateX(8px) rotate(10deg); }
+  76%  { transform: translateX(-2px) translateY(-5px) rotate(-4deg) scale(.96, 1.05); }   /* wobble up... */
+  90%  { transform: translateY(7px) rotate(-4deg) scale(1.16, .82); }                     /* ...plop! */
+  100% { transform: translateY(5px) rotate(-5deg) scale(1.07, .92); }
+}
+@keyframes sit-bob {
+  0%, 100% { transform: translateY(5px) rotate(-5deg) scale(1.07, .92); }
+  50%      { transform: translateY(5px) rotate(-8deg) scale(1.055, .94); }
+}
+@keyframes q-bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-4px) rotate(8deg); } }
+
+/* -- sideeye: "what are you doing?" Body turns away, half-closed eyes slide to the side,
+      hands on hips, one foot tapping. Used when you get distracted. -- */
+[data-mood="sideeye"] .bot-tilt   { transform: rotate(5deg); }
+[data-mood="sideeye"] .bot-bounce { animation-duration: 4.5s; }
+[data-mood="sideeye"] .face-mood  { animation: glance 6s ease-in-out infinite; }
+[data-mood="sideeye"] .eye        { transform: scale(1.1); }
+[data-mood="sideeye"] .mouth      { transform: translate(-2px, 0) rotate(-8deg); transition: transform .3s; }
+[data-mood="sideeye"] .ant-l      { transform: rotate(22deg); }
+[data-mood="sideeye"] .ant-r      { transform: rotate(30deg); }
+[data-mood="sideeye"] .ant-wiggle { animation-duration: 5s; }
+[data-mood="sideeye"] .arm-l      { transform: rotate(-30deg); }
+[data-mood="sideeye"] .arm-r      { transform: rotate(30deg); }
+[data-mood="sideeye"] .foot-r     { animation: tap .55s ease-in-out infinite; }
+[data-mood="sideeye"] .blush      { opacity: .35; }
+@keyframes glance {            /* stare sideways... quick look away... and back to staring */
+  0%, 62%, 100% { transform: translate(-8px, 1px); }
+  70%, 82%      { transform: translate(5px, 1px); }
+}
+@keyframes tap { 0%, 100% { transform: none; } 50% { transform: translateY(-3.5px) rotate(-8deg); } }
+
+/* -- amazed: stretches up, big sparkly eyes, "o" mouth, antennas tremble -- */
+[data-mood="amazed"] .bot-tilt   { transform: translateY(-3px); }
+[data-mood="amazed"] .bot-bounce { animation: awe 1.3s ease-in-out infinite; }
+[data-mood="amazed"] .ant-l      { transform: rotate(12deg); }
+[data-mood="amazed"] .ant-r      { transform: rotate(-12deg); }
+[data-mood="amazed"] .ant-wiggle { animation: tremble .14s linear infinite; }
+[data-mood="amazed"] .arm-l { transform: rotate(72deg); }
+[data-mood="amazed"] .arm-r { transform: rotate(-72deg); }
+[data-mood="amazed"] .e-star  { animation: star-pulse .9s ease-in-out .35s infinite; }
+[data-mood="amazed"] .twinkle { opacity: 1; transform: scale(1); animation: twinkle 1.1s ease-in-out .3s infinite; }
+[data-mood="amazed"] .t2 { animation-delay: .8s; }
+@keyframes awe     { 0%, 100% { transform: scale(.98, 1.04); } 50% { transform: scale(.968, 1.058); } }
+@keyframes star-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(.82) rotate(12deg); } }
+@keyframes tremble { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes twinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(.35) rotate(45deg); } }
+
+/* -- celebrating: big jumps, arms up and waving, confetti -- */
+[data-mood="celebrating"] .bot-bounce { animation: jump 1.15s cubic-bezier(.4, 0, .4, 1) infinite; }
+[data-mood="celebrating"] .shadow     { animation: shadow-jump 1.15s ease-in-out infinite; }
+[data-mood="celebrating"] .ant-wiggle { animation-duration: .38s; }
+[data-mood="celebrating"] .arm-l { transform: translate(-3px, -7px) rotate(152deg); }
+[data-mood="celebrating"] .arm-r { transform: translate(3px, -7px) rotate(-152deg); }
+[data-mood="celebrating"] .arm-wave { animation: wave .29s ease-in-out infinite alternate; }
+[data-mood="celebrating"] .blush { opacity: 1; }
+[data-mood="celebrating"] .confetti { animation: confetti 1.5s ease-out infinite; animation-delay: var(--d); }
+@keyframes jump {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  12% { transform: translateY(0) scale(1.13, .85); }         /* crouch */
+  34% { transform: translateY(-21px) scale(.92, 1.1); }      /* shoot up, stretched */
+  48% { transform: translateY(-25px) scale(1, 1); }          /* top of the jump */
+  64% { transform: translateY(-8px) scale(.94, 1.08); }      /* falling */
+  78% { transform: translateY(0) scale(1.15, .83); }         /* land, squashed */
+  90% { transform: translateY(0) scale(.97, 1.03); }
+}
+@keyframes shadow-jump { 0%, 78%, 100% { transform: scale(1); opacity: 1; } 48% { transform: scale(.68); opacity: .55; } }
+@keyframes wave { from { transform: rotate(-10deg); } to { transform: rotate(14deg); } }
+@keyframes confetti {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(0) scale(.2); }
+  10%  { opacity: 1; }
+  55%  { opacity: 1; transform: translate(var(--dx), var(--dy)) rotate(var(--r)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + 42px)) rotate(calc(var(--r) * 2)) scale(.9); }
+}
+
+/* ---------- 3b. Poke reactions ----------
+   orange.js sets data-poke="tummy" (etc.) for about a second when you click her.
+   These rules start with #orange so they win over the mood rules for that moment. */
+
+.heart { fill: #FF7A93; stroke: #D9486A; stroke-width: 1.2; opacity: 0; }
+
+/* tummy: giggle and jiggle like jelly */
+#orange[data-poke="tummy"] .bot-tilt { animation: jiggle .8s ease-in-out; }
+#orange[data-poke="tummy"] .eye .v, #orange[data-poke="head"] .eye .v,
+#orange[data-poke="tummy"] .mouth .v, #orange[data-poke="head"] .mouth .v { opacity: 0; transform: scale(.55); }
+/* (".eye .e-happy" and not just ".e-happy": the longer name is what lets "show" beat "hide" above) */
+#orange[data-poke="tummy"] .eye .e-happy, #orange[data-poke="tummy"] .mouth .m-big,
+#orange[data-poke="head"] .eye .e-happy, #orange[data-poke="head"] .mouth .m-smile { opacity: 1; transform: scale(1); }
+#orange[data-poke="tummy"] .blush, #orange[data-poke="head"] .blush { opacity: 1; }
+#orange[data-poke="tummy"] .glasses, #orange[data-poke="face"] .glasses { opacity: 0; }
+@keyframes jiggle {
+  0%, 100% { transform: scale(1, 1); }
+  15% { transform: scale(1.12, .9); }   30% { transform: scale(.93, 1.07); }
+  45% { transform: scale(1.07, .95); }  60% { transform: scale(.97, 1.03); }
+  80% { transform: scale(1.02, .99); }
+}
+
+/* face: eyes squeezed shut, shakes her head */
+#orange[data-poke="face"] .bot-tilt { animation: shake .5s ease-in-out; }
+#orange[data-poke="face"] .lid      { transform: scaleY(.12); }
+#orange[data-poke="face"] .mouth .v { opacity: 0; }
+#orange[data-poke="face"] .mouth .m-wavy { opacity: 1; transform: scale(1); }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px) rotate(-3deg); }  40% { transform: translateX(5px) rotate(3deg); }
+  60% { transform: translateX(-3px) rotate(-2deg); }  80% { transform: translateX(3px) rotate(2deg); }
+}
+
+/* antenna: boing! (only the one you clicked) */
+#orange[data-poke="antenna-l"] .ant-l .ant-wiggle,
+#orange[data-poke="antenna-r"] .ant-r .ant-wiggle { animation: boing 1s ease-out; }
+#orange[data-poke="antenna-l"] .bot-tilt { animation: lean-l .6s ease-out; }
+#orange[data-poke="antenna-r"] .bot-tilt { animation: lean-r .6s ease-out; }
+@keyframes boing {
+  0% { transform: rotate(0); }      12% { transform: rotate(38deg); }  28% { transform: rotate(-30deg); }
+  44% { transform: rotate(22deg); } 60% { transform: rotate(-14deg); } 76% { transform: rotate(8deg); }
+  90% { transform: rotate(-4deg); } 100% { transform: rotate(0); }
+}
+@keyframes lean-l { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(5deg); } }
+@keyframes lean-r { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-5deg); } }
+
+/* feet: two quick little hops */
+#orange[data-poke="feet"] .bot-tilt { animation: toe-hop .7s ease-in-out; }
+#orange[data-poke="feet"] .eye { transform: scale(1.2); }
+@keyframes toe-hop {
+  0%, 50%, 100% { transform: translateY(0) scale(1, 1); }
+  20% { transform: translateY(-9px) scale(.96, 1.05); }  38% { transform: translateY(0) scale(1.07, .93); }
+  70% { transform: translateY(-6px) scale(.97, 1.03); }  88% { transform: translateY(0) scale(1.05, .95); }
+}
+
+/* head pat: happy eyes, sways, hearts float up */
+#orange[data-poke="head"] .bot-tilt { animation: enjoy 1.6s ease-in-out; }
+#orange[data-poke="head"] .heart { animation: heart-float 1.5s ease-out; }
+#orange[data-poke="head"] .h2    { animation-delay: .25s; }
+@keyframes enjoy { 0%, 100% { transform: rotate(0) scale(1, 1); } 30% { transform: rotate(-4deg) scale(1.03, .96); } 70% { transform: rotate(4deg) scale(1.03, .96); } }
+@keyframes heart-float {
+  0% { opacity: 0; transform: translateY(8px) scale(.3); }  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-18px) scale(1.1); }
+}
+
+/* huff: poked too much. Turns away with a flat stare and taps her foot. */
+#orange[data-poke="huff"] .bot-tilt { transform: rotate(7deg) scaleX(.9); }
+#orange[data-poke="huff"] .eye .v, #orange[data-poke="huff"] .mouth .v { opacity: 0; }
+#orange[data-poke="huff"] .eye .e-flat, #orange[data-poke="huff"] .mouth .m-flat { opacity: 1; transform: scale(1); }
+#orange[data-poke="huff"] .face-mood { transform: translate(9px, 1px); }
+#orange[data-poke="huff"] .arm-l { transform: rotate(-30deg); }
+#orange[data-poke="huff"] .arm-r { transform: rotate(30deg); }
+#orange[data-poke="huff"] .foot-l { animation: tap .5s ease-in-out infinite; }
+#orange[data-poke="huff"] .blush { opacity: .3; }
+
+/* ---------- 3c. Being carried, dropped, shaken, squashed, and hovered over ----------
+   window.py sets these while you drag her (they stay until it changes them):
+     carried, glitch, squash-left/right/top/bottom, wary-left/right
+   and these for a few seconds afterwards:  land, dizzy, dazed
+   "^=" below means "starts with", so [data-poke^="squash"] covers all four squash sides. */
+
+/* In these states her usual breathing/hopping stops, and the face is fully taken over. */
+#orange[data-poke="carried"] .bot-bounce, #orange[data-poke="glitch"] .bot-bounce,
+#orange[data-poke^="squash"] .bot-bounce, #orange[data-poke="dazed"] .bot-bounce,
+#orange[data-poke="dizzy"] .bot-bounce, #orange[data-poke="land"] .bot-bounce { animation: none; }
+#orange[data-poke="carried"] .eye .v, #orange[data-poke="carried"] .mouth .v,
+#orange[data-poke="glitch"] .eye .v, #orange[data-poke="glitch"] .mouth .v,
+#orange[data-poke^="squash"] .mouth .v, #orange[data-poke="land"] .mouth .v,
+#orange[data-poke="dazed"] .eye .v, #orange[data-poke="dazed"] .mouth .v,
+#orange[data-poke="dizzy"] .eye .v, #orange[data-poke="dizzy"] .mouth .v,
+#orange[data-poke^="wary"] .eye .v, #orange[data-poke^="wary"] .mouth .v { opacity: 0; transform: scale(.55); }
+#orange[data-poke="carried"] .glasses, #orange[data-poke="glitch"] .glasses, #orange[data-poke^="squash"] .glasses,
+#orange[data-poke="dazed"] .glasses, #orange[data-poke="dizzy"] .glasses, #orange[data-poke="land"] .glasses,
+#orange[data-poke="carried"] .book, #orange[data-poke="glitch"] .book, #orange[data-poke^="squash"] .book,
+#orange[data-poke="dazed"] .book, #orange[data-poke="dizzy"] .book { opacity: 0; }
+
+/* carried: held up by the head. Body stretches and swings, legs dangle, arms flail, eyes wide. */
+#orange[data-poke="carried"] .bot-tilt, #orange[data-poke="glitch"] .bot-tilt {
+  transform-origin: 100px 40px; animation: dangle .55s ease-in-out infinite alternate; }
+#orange[data-poke="carried"] .shadow, #orange[data-poke="glitch"] .shadow, #orange[data-poke^="squash"] .shadow { opacity: 0; }
+#orange[data-poke="carried"] .eye .e-open, #orange[data-poke="glitch"] .eye .e-open { opacity: 1; transform: scale(1.35); }
+#orange[data-poke="carried"] .mouth .m-o { opacity: 1; transform: scale(1.1); }
+#orange[data-poke="carried"] .foot-l, #orange[data-poke="glitch"] .foot-l { animation: kick-l .3s ease-in-out infinite alternate; }
+#orange[data-poke="carried"] .foot-r, #orange[data-poke="glitch"] .foot-r { animation: kick-r .3s ease-in-out infinite alternate; }
+#orange[data-poke="carried"] .arm-l, #orange[data-poke="glitch"] .arm-l { transform: rotate(110deg); }
+#orange[data-poke="carried"] .arm-r, #orange[data-poke="glitch"] .arm-r { transform: rotate(-110deg); }
+#orange[data-poke="carried"] .arm-wave, #orange[data-poke="glitch"] .arm-wave { animation: flail .16s ease-in-out infinite alternate; }
+#orange[data-poke="carried"] .ant-wiggle, #orange[data-poke="glitch"] .ant-wiggle { animation-duration: .35s; }
+@keyframes dangle { from { transform: rotate(-7deg) scale(.95, 1.07); } to { transform: rotate(7deg) scale(.95, 1.07); } }
+@keyframes kick-l { from { transform: translateY(6px) rotate(-16deg); } to { transform: translateY(8px) rotate(12deg); } }
+@keyframes kick-r { from { transform: translateY(8px) rotate(14deg); } to { transform: translateY(6px) rotate(-12deg); } }
+@keyframes flail  { from { transform: rotate(-28deg); } to { transform: rotate(28deg); } }
+
+/* glitch: you are shaking her. Same as carried, plus her screen flickers and jumps. */
+#orange[data-poke="glitch"] .mouth .m-wavy { opacity: 1; transform: scale(1.2); }
+#orange[data-poke="glitch"] .face, #orange[data-poke="dazed"] .face { animation: flicker .28s steps(2, end) infinite; }
+#orange[data-poke="glitch"] .scan { animation: scan-jump .2s steps(3, end) infinite; }
+@keyframes flicker {
+  0%   { opacity: 1;  transform: translate(0, 0); }
+  30%  { opacity: .35; transform: translate(-4px, 1px) skewX(-12deg); }
+  60%  { opacity: 1;  transform: translate(3px, -1px) skewX(10deg); }
+  100% { opacity: .7; transform: translate(0, 0); }
+}
+@keyframes scan-jump { from { transform: translateY(0); opacity: 1; } to { transform: translateY(2px); opacity: .5; } }
+
+/* dazed: after a shake. Sits down, spiral eyes, screen still flickering a little. */
+#orange[data-poke="dazed"] .bot-tilt { transform: translateY(5px) rotate(-4deg) scale(1.08, .9); }
+#orange[data-poke="dazed"] .face     { animation-duration: .9s; }
+#orange[data-poke="dazed"] .foot-l   { transform: translate(-10px, -2px) rotate(-18deg); }
+#orange[data-poke="dazed"] .foot-r   { transform: translate(10px, -2px) rotate(18deg); }
+#orange[data-poke="dazed"] .ant-l    { transform: rotate(-95deg); }
+#orange[data-poke="dazed"] .ant-r    { transform: rotate(95deg); }
+#orange[data-poke="dazed"] .eye .e-spiral, #orange[data-poke="dizzy"] .eye .e-spiral {
+  opacity: 1; animation: spin .7s linear infinite; }
+#orange[data-poke="dazed"] .mouth .m-wavy, #orange[data-poke="dizzy"] .mouth .m-wavy { opacity: 1; transform: scale(1); }
+@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* dizzy: after being dragged around fast. Spiral eyes, staggers on the spot. */
+#orange[data-poke="dizzy"] .bot-tilt { animation: wobble 1.1s ease-in-out infinite; }
+#orange[data-poke="dizzy"] .ant-wiggle { animation-duration: .6s; }
+@keyframes wobble {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  25% { transform: translateX(-9px) rotate(-10deg); }
+  50% { transform: translateX(3px) rotate(4deg); }
+  75% { transform: translateX(9px) rotate(10deg); }
+}
+
+/* land: put down. One big squish, then a bounce. */
+#orange[data-poke="land"] .bot-tilt { animation: land .75s ease-out; }
+#orange[data-poke="land"] .lid      { transform: scaleY(.12); }
+#orange[data-poke="land"] .mouth .m-wavy { opacity: 1; transform: scale(1); }
+@keyframes land {
+  0%   { transform: translateY(-10px) scale(.92, 1.1); }
+  22%  { transform: translateY(4px) scale(1.3, .66); }       /* SPLAT */
+  45%  { transform: translateY(-9px) scale(.9, 1.12); }      /* bounce up */
+  65%  { transform: translateY(0) scale(1.12, .88); }
+  82%  { transform: translateY(0) scale(.97, 1.03); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+/* squash: pushed against an edge of the screen. She flattens against that side. */
+#orange[data-poke^="squash"] .lid { transform: scaleY(.12); }
+#orange[data-poke^="squash"] .mouth .m-wavy { opacity: 1; transform: scale(1.1); }
+#orange[data-poke^="squash"] .bot-tilt { transition: transform .12s ease-out; }
+#orange[data-poke="squash-left"]   .bot-tilt { transform-origin: 44px 183px;  transform: scale(.58, 1.14); }
+#orange[data-poke="squash-right"]  .bot-tilt { transform-origin: 156px 183px; transform: scale(.58, 1.14); }
+#orange[data-poke="squash-top"]    .bot-tilt { transform-origin: 100px 34px;  transform: scale(1.22, .6); }
+#orange[data-poke="squash-bottom"] .bot-tilt { transform-origin: 100px 190px; transform: scale(1.28, .55); }
+#orange[data-poke^="squash"] .arm-l { transform: rotate(80deg); }
+#orange[data-poke^="squash"] .arm-r { transform: rotate(-80deg); }
+
+/* wary: the mouse is hovering close and not doing anything. She leans away and stares at it. */
+#orange[data-poke="wary-left"]  .bot-tilt { transform: translateX(7px) rotate(9deg); }     /* mouse on her left */
+#orange[data-poke="wary-right"] .bot-tilt { transform: translateX(-7px) rotate(-9deg); }
+#orange[data-poke^="wary"] .eye .e-flat, #orange[data-poke^="wary"] .mouth .m-flat { opacity: 1; transform: scale(1); }
+#orange[data-poke="wary-left"]  .face-mood { transform: translate(-7px, 0); }
+#orange[data-poke="wary-right"] .face-mood { transform: translate(7px, 0); }
+#orange[data-poke="wary-left"]  .arm-l { transform: rotate(70deg); }     /* the near arm goes up, guarding */
+#orange[data-poke="wary-right"] .arm-r { transform: rotate(-70deg); }
+#orange[data-poke^="wary"] .blush { opacity: .35; }
+
+/* loom: she has just hidden a distracting window and fills the whole screen for a few seconds.
+   Pops up big, hands on hips, flat stare straight at you, tapping a foot. Then "shrink". */
+#orange[data-poke="loom"] .bot-tilt   { animation: loom-in .5s cubic-bezier(.34, 1.4, .64, 1); }
+#orange[data-poke="shrink"] .bot-tilt { animation: loom-out .3s ease-in forwards; }
+#orange[data-poke="loom"] .eye .v, #orange[data-poke="loom"] .mouth .v,
+#orange[data-poke="shrink"] .eye .v, #orange[data-poke="shrink"] .mouth .v { opacity: 0; transform: scale(.55); }
+#orange[data-poke="loom"] .eye .e-flat, #orange[data-poke="loom"] .mouth .m-flat,
+#orange[data-poke="shrink"] .eye .e-flat, #orange[data-poke="shrink"] .mouth .m-flat { opacity: 1; transform: scale(1); }
+#orange[data-poke="loom"] .face-mood  { animation: none; transform: translate(0, 2px); }
+#orange[data-poke="loom"] .eye        { transform: scale(1.15); }
+#orange[data-poke="loom"] .arm-l      { transform: rotate(-30deg); }
+#orange[data-poke="loom"] .arm-r      { transform: rotate(30deg); }
+#orange[data-poke="loom"] .foot-r     { animation: tap .45s ease-in-out infinite; }
+#orange[data-poke="loom"] .glasses, #orange[data-poke="loom"] .book,
+#orange[data-poke="shrink"] .glasses, #orange[data-poke="shrink"] .book { opacity: 0; }
+#orange[data-poke="loom"] .blush      { opacity: .35; }
+@keyframes loom-in  { from { transform: scale(.12); } to { transform: scale(1); } }
+@keyframes loom-out { from { transform: scale(1); }  to { transform: scale(.12); } }
+
+/* When the page is hidden, orange.js adds "paused" so nothing animates (saves CPU). */
+.paused * { animation-play-state: paused !important; }
+
+/* ---------- 4. The preview page ---------- */
+
+html, body { margin: 0; height: 100%; }
+body {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: #FBF3E4; color: #5A3A22;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+.preview-ui h1 { margin: 0; font-size: 26px; text-align: center; }
+.preview-ui h1 span { font-weight: 400; opacity: .6; font-size: 18px; }
+.preview-ui p  { margin: 6px 0 0; opacity: .75; text-align: center; }
+
+.stage { width: 340px; height: 364px; border-radius: 28px; display: grid; place-items: center;
+         background: #FFF9EE; box-shadow: 0 4px 24px rgba(120, 70, 20, .12); transition: background .3s; }
+.stage svg { width: 300px; height: 324px; transition: width .3s, height .3s; }
+.stage.real svg { width: 200px; height: 216px; }
+.stage.dark { background: #1E1F26; }
+.stage.desk { background: linear-gradient(135deg, #3A7BD5, #6FB1E8 60%, #A8D8F0); }
+
+.row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; max-width: 620px; }
+.row.small { margin-top: 12px; font-size: 13px; opacity: .9; }
+.row .gap { margin-left: 14px; }
+button { font: inherit; padding: 8px 14px; border-radius: 999px; border: 2px solid #F0C592;
+         background: #fff; color: #5A3A22; cursor: pointer; transition: transform .1s, background .2s; }
+.row.small button { padding: 4px 10px; }
+button:hover  { background: #FFEFD9; }
+button:active { transform: scale(.95); }
+button.on     { background: #FF9E40; border-color: #E3741F; color: #fff; font-weight: 600; }
+
+/* The real pet window: no buttons, see-through background, Orange fills the window. */
+.window-mode body { background: transparent; }
+.window-mode .preview-ui { display: none; }
+.window-mode .stage { width: 100vw; height: 100vh; background: transparent; box-shadow: none; border-radius: 0; }
+.window-mode .stage svg { width: 100vw; height: 100vh; }

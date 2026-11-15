@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orange - Soft Bot</title>
+  <link rel="stylesheet" href="orange.css">
+</head>
+<body>
+<!--
+  Orange's body. Everything is drawn with SVG shapes (no image files), so each
+  part (eyes, mouth, arms, antennas) can move on its own.
+
+  HOW MOODS WORK
+    The <svg> below has an attribute  data-mood="idle".
+    orange.js changes that one word ("happy", "sleepy", ...).
+    orange.css has rules for every mood that show/hide/move the parts.
+
+  TWO WAYS THIS PAGE IS USED
+    1. Preview: open orange.html in a browser. You get mood buttons.
+    2. Pet window (next phase): Python opens "orange.html?window". The buttons
+       are hidden and the background becomes see-through.
+
+  A NOTE ON  <g transform="translate(x y)">
+    Many parts sit inside a wrapper like that. The wrapper only says WHERE the
+    part is. The part inside is then drawn around point (0,0), so when CSS
+    rotates or scales it, it turns around its own centre/joint.
+-->
+
+<header class="preview-ui">
+  <h1>Orange <span>Soft Bot preview</span></h1>
+  <p>Click a mood (or press keys 1 to 9). Move your mouse around: the eyes follow it. Click her tummy, face, antennas, head or feet to poke her.</p>
+</header>
+
+<main class="stage" id="stage">
+  <svg id="orange" data-mood="idle" viewBox="0 0 200 216" xmlns="http://www.w3.org/2000/svg"
+       role="img" aria-label="Orange the Soft Bot">
+    <defs>
+      <!-- Soft orange paint: lighter at the top-left, like light falling on it -->
+      <radialGradient id="bodyPaint" cx="38%" cy="24%" r="88%">
+        <stop offset="0" stop-color="#FFC680"/>
+        <stop offset=".55" stop-color="#FF9E40"/>
+        <stop offset="1" stop-color="#F3832A"/>
+      </radialGradient>
+      <!-- Very faint lines so the face looks like a little screen -->
+      <pattern id="scanlines" width="4" height="3" patternUnits="userSpaceOnUse">
+        <rect width="4" height="1" fill="#fff" opacity=".05"/>
+      </pattern>
+    </defs>
+
+    <!-- Shadow on the "floor". It shrinks when Orange jumps. -->
+    <ellipse class="shadow" cx="100" cy="187" rx="46" ry="6.5"/>
+
+    <!-- Confetti pieces are added here by orange.js (celebrating mood) -->
+    <g id="confetti" transform="translate(100 80)"></g>
+
+    <!-- bot-tilt = the pose for a mood (head tilt, lean). bot-bounce = breathing / hopping. -->
+    <g class="bot-tilt"><g class="bot-bounce">
+
+      <!-- Antennas (behind the body). Each can droop, perk up and wiggle. -->
+      <g transform="translate(47 80)"><g class="ant ant-l"><g class="ant-wiggle">
+        <line class="ant-stalk" x1="0" y1="0" x2="-5" y2="-20"/>
+        <circle class="ant-tip" cx="-5.5" cy="-24" r="5.5"/>
+      </g></g></g>
+      <g transform="translate(153 80)"><g class="ant ant-r"><g class="ant-wiggle">
+        <line class="ant-stalk" x1="0" y1="0" x2="5" y2="-20"/>
+        <circle class="ant-tip" cx="5.5" cy="-24" r="5.5"/>
+      </g></g></g>
+
+      <!-- Ear caps and feet -->
+      <ellipse class="ear" cx="49" cy="88" rx="7.5" ry="12"/>
+      <ellipse class="ear" cx="151" cy="88" rx="7.5" ry="12"/>
+      <ellipse class="foot foot-l" cx="80" cy="178" rx="14" ry="8.5"/>
+      <ellipse class="foot foot-r" cx="120" cy="178" rx="14" ry="8.5"/>
+
+      <!-- The squishy body, a shiny spot, and the lighter belly patch -->
+      <path class="body" d="M100 38 C140 38 152 70 152 110 C152 150 135 174 100 174
+                            C65 174 48 150 48 110 C48 70 60 38 100 38 Z"/>
+      <ellipse class="gloss" cx="73" cy="50" rx="12" ry="5.5" transform="rotate(-34 73 50)"/>
+      <ellipse class="belly" cx="100" cy="156" rx="24" ry="12"/>
+
+      <!-- The screen -->
+      <rect class="bezel" x="58" y="53" width="84" height="70" rx="29"/>
+      <rect class="screen" x="61.5" y="56.5" width="77" height="63" rx="26"/>
+      <rect class="scan" x="61.5" y="56.5" width="77" height="63" rx="26"/>
+      <path class="screen-shine" d="M70 67 Q77 60 91 59.5"/>
+
+      <!-- THE FACE. face = glow + dimming, face-mood = look down at book,
+           face-look = eyes following the mouse. -->
+      <g class="face"><g class="face-mood"><g class="face-look">
+
+        <!-- Left eye. "eye" = size for the mood, "lid" = blinking.
+             Inside are 6 eye drawings (normal, happy, sleepy, half-closed, dizzy spiral, star); CSS shows one at a time. -->
+        <g transform="translate(84 85)"><g class="eye eye-l"><g class="lid">
+          <rect class="v fill e-open" x="-4.5" y="-7" width="9" height="14" rx="4.5"/>
+          <path class="v line e-happy" d="M-7 3.5 Q0 -8 7 3.5"/>
+          <path class="v line e-sleepy" d="M-6.5 -1 Q0 4.5 6.5 -1"/>
+          <path class="v fill soft e-flat" d="M-6.5 -1.5 H6.5 Q6.5 5.5 0 5.5 Q-6.5 5.5 -6.5 -1.5 Z"/>
+          <path class="v line thin e-spiral" d="M0.5 0 C0.5 -2.2 4 -2.2 4 0.8 C4 4.6 -4.2 4.8 -4.6 -0.4 C-5 -5.6 2 -7.4 6 -4.6"/>
+          <path class="v fill soft e-star" d="M0 -9.5 Q1.6 -1.6 9.5 0 Q1.6 1.6 0 9.5 Q-1.6 1.6 -9.5 0 Q-1.6 -1.6 0 -9.5 Z"/>
+        </g></g></g>
+
+        <!-- Right eye (same drawings) -->
+        <g transform="translate(116 85)"><g class="eye eye-r"><g class="lid">
+          <rect class="v fill e-open" x="-4.5" y="-7" width="9" height="14" rx="4.5"/>
+          <path class="v line e-happy" d="M-7 3.5 Q0 -8 7 3.5"/>
+          <path class="v line e-sleepy" d="M-6.5 -1 Q0 4.5 6.5 -1"/>
+          <path class="v fill soft e-flat" d="M-6.5 -1.5 H6.5 Q6.5 5.5 0 5.5 Q-6.5 5.5 -6.5 -1.5 Z"/>
+          <path class="v line thin e-spiral" d="M0.5 0 C0.5 -2.2 4 -2.2 4 0.8 C4 4.6 -4.2 4.8 -4.6 -0.4 C-5 -5.6 2 -7.4 6 -4.6"/>
+          <path class="v fill soft e-star" d="M0 -9.5 Q1.6 -1.6 9.5 0 Q1.6 1.6 0 9.5 Q-1.6 1.6 -9.5 0 Q-1.6 -1.6 0 -9.5 Z"/>
+        </g></g></g>
+
+        <!-- Glasses (focused mood) -->
+        <g transform="translate(100 85)"><g class="glasses">
+          <circle class="line thin" cx="-16" r="10.5"/>
+          <circle class="line thin" cx="16" r="10.5"/>
+          <path class="line thin" d="M-5.5 -1 Q0 -4 5.5 -1"/>
+        </g></g>
+
+        <!-- Blush -->
+        <ellipse class="blush" cx="71.5" cy="98" rx="5" ry="3"/>
+        <ellipse class="blush" cx="128.5" cy="98" rx="5" ry="3"/>
+
+        <!-- Mouth: 7 drawings, CSS shows one at a time -->
+        <g transform="translate(100 101)"><g class="mouth">
+          <path class="v line m-smile" d="M-5.5 -1 Q0 5 5.5 -1"/>
+          <path class="v fill soft m-big" d="M-6.5 -2 Q0 9 6.5 -2 Z"/>
+          <ellipse class="v fill m-o" rx="3.2" ry="4"/>
+          <path class="v line m-flat" d="M-3 1 L3 1"/>
+          <path class="v line m-wavy" d="M-6 1 Q-3 -3 0 1 T6 1"/>
+          <circle class="v fill m-tiny" r="2.1"/>
+          <g class="v m-wave">   <!-- sound wave: 5 bars that dance while listening -->
+            <rect class="fill bar" x="-10.2" y="-4.5" width="2.6" height="9" rx="1.3"/>
+            <rect class="fill bar" x="-5.7"  y="-4.5" width="2.6" height="9" rx="1.3"/>
+            <rect class="fill bar" x="-1.3"  y="-4.5" width="2.6" height="9" rx="1.3"/>
+            <rect class="fill bar" x="3.2"   y="-4.5" width="2.6" height="9" rx="1.3"/>
+            <rect class="fill bar" x="7.6"   y="-4.5" width="2.6" height="9" rx="1.3"/>
+          </g>
+        </g></g>
+
+        <!-- Twinkles on the screen (amazed mood) -->
+        <g transform="translate(70 70)"><path class="twinkle fill" d="M0 -4.5 Q0 0 4.5 0 Q0 0 0 4.5 Q0 0 -4.5 0 Q0 0 0 -4.5 Z"/></g>
+        <g transform="translate(131 72)"><path class="twinkle t2 fill" d="M0 -3.5 Q0 0 3.5 0 Q0 0 0 3.5 Q0 0 -3.5 0 Q0 0 0 -3.5 Z"/></g>
+      </g></g></g>
+
+      <!-- Tiny book (focused mood). We see its cover, like Orange is reading it. -->
+      <g transform="translate(100 147)"><g class="book"><g class="book-bob">
+        <path class="pages" d="M-23 -11 L-1 -7 L-1 -3 L-23 -7 Z"/>
+        <path class="pages" d="M23 -11 L1 -7 L1 -3 L23 -7 Z"/>
+        <path class="page-flip" d="M1 -8 L22 -12.5 L22 -9 L1 -4.5 Z"/>
+        <path class="cover" d="M-25 -8 L0 -4 L25 -8 L25 11 L0 15 L-25 11 Z"/>
+        <line class="spine" x1="0" y1="-4" x2="0" y2="15"/>
+        <path class="cover-heart" d="M12.5 5.2 C10.2 3.2 9.6 1.4 11 0.5 C11.8 0 12.5 0.6 12.5 1.2 C12.5 0.6 13.2 0 14 0.5 C15.4 1.4 14.8 3.2 12.5 5.2 Z"/>
+      </g></g></g>
+
+      <!-- Arms (in front, so they can hold the book). The joint is the shoulder. -->
+      <g transform="translate(54 124)"><g class="arm arm-l"><g class="arm-wave">
+        <ellipse class="arm-shape" cx="0" cy="9" rx="8" ry="13"/>
+      </g></g></g>
+      <g transform="translate(146 124)"><g class="arm arm-r"><g class="arm-wave">
+        <ellipse class="arm-shape" cx="0" cy="9" rx="8" ry="13"/>
+      </g></g></g>
+    </g></g>
+
+    <!-- Timer label under Orange, e.g. "DL 32:10". Python fills it in with Orange.setTimer(). -->
+    <g id="timer" class="timer">
+      <rect x="50" y="197" width="100" height="17" rx="8.5"/>
+      <text x="100" y="209.3" text-anchor="middle">0:00</text>
+    </g>
+
+    <!-- Little hearts (when you pat her head) -->
+    <g transform="translate(78 30)"><path class="heart h1" d="M0 6 C-7 0 -8 -5 -4 -7 C-1.5 -8 0 -6 0 -4 C0 -6 1.5 -8 4 -7 C8 -5 7 0 0 6 Z"/></g>
+    <g transform="translate(124 24)"><path class="heart h2" d="M0 6 C-7 0 -8 -5 -4 -7 C-1.5 -8 0 -6 0 -4 C0 -6 1.5 -8 4 -7 C8 -5 7 0 0 6 Z"/></g>
+
+    <!-- "z z z" (sleepy mood) -->
+    <g transform="translate(150 44)">
+      <path class="zz z1" d="M-3 -3 H3 L-3 3 H3"/>
+      <path class="zz z2" d="M-3 -3 H3 L-3 3 H3"/>
+      <path class="zz z3" d="M-3 -3 H3 L-3 3 H3"/>
+    </g>
+
+    <!-- "?" (confused mood) -->
+    <g transform="translate(160 36)"><g class="qmark">
+      <path d="M-5 -7 Q-5 -13 0.5 -13 Q6 -13 6 -7.5 Q6 -3.5 0.5 -1.5 V2"/>
+      <circle cx="0.5" cy="8.5" r="1.2"/>
+    </g></g>
+  </svg>
+</main>
+
+<footer class="preview-ui">
+  <div class="row" id="mood-buttons"></div>
+  <div class="row small">
+    <span>Background:</span>
+    <button data-bg="cream" class="on">Cream</button>
+    <button data-bg="dark">Dark</button>
+    <button data-bg="desk">Desktop</button>
+    <span class="gap">Size:</span>
+    <button data-size="big" class="on">Zoomed</button>
+    <button data-size="real">Real size (200 px)</button>
+  </div>
+</footer>
+
+<script src="orange.js"></script>
+</body>
+</html>

@@ -14,6 +14,11 @@ __pycache__/
 *.mp3
 *.jpg
 *.png
+# ...except the pictures used in README.md
+!docs/images/*.png
+
+# --- Orange's memory (data/orange.db): your sessions, reminders and notes stay on your laptop ---
+data/
 
 # --- Downloaded AI model files (large, re-downloadable) ---
 models/

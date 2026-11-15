@@ -1,87 +1,131 @@
-# Orange
+<h1 align="center">🍊 Orange</h1>
 
-A small voice-activated AI desk assistant. You say the wake word, ask a question,
-and Orange answers out loud. It can also look through the webcam if you ask.
+<p align="center">
+  <b>A tiny study buddy who lives on your screen.</b><br>
+  She studies with you, notices when you drift, and reacts when you poke her.<br>
+  Everything runs on your own laptop.
+</p>
 
-v1.0 runs on a Windows laptop. Later it moves to a Raspberry Pi 5.
+<p align="center">
+  <img src="docs/images/moods.png" alt="Orange's nine moods" width="820">
+</p>
 
-## Setup (Windows)
+---
 
-1. **Install Python 3.11** (if `py -3.11 --version` fails):
-   ```powershell
-   winget install Python.Python.3.11
-   ```
-   Close and reopen the terminal afterwards.
+## Why Orange exists
 
-2. **Create a virtual environment** (a private box of packages just for this project):
-   ```powershell
-   py -3.11 -m venv venv
-   ```
+Most focus apps work *at* you: a timer rings and that is it.
+Orange works *with* you. Tell her what you are studying and she sits in the corner of
+your screen with her own tiny book and reads alongside you. When you take a break, so does she.
+When the session ends, she celebrates.
 
-3. **Activate it** (you'll see `(venv)` at the start of the prompt):
-   ```powershell
-   .\venv\Scripts\Activate.ps1
-   ```
-   If PowerShell says "running scripts is disabled", run this once, then try again:
-   ```powershell
-   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-   ```
+She is a companion, not a tutor. She will not explain eigenvalues. She will sit with you while you learn them.
 
-4. **Install the packages**:
-   ```powershell
-   python -m pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
+## What she does
 
-5. **Add your API key**: copy `.env.example` to `.env` and paste your key in.
-   ```powershell
-   Copy-Item .env.example .env
-   ```
-   `.env` is in `.gitignore`, so it never gets committed.
+| | |
+|---|---|
+| 📖 **Studies with you** | "Study DL for 45 minutes" and she puts on glasses and reads beside you, with a timer under her feet. |
+| 🗣️ **Listens** | Say "Hey Orange", double-click her, or press `Ctrl+Space`. Speech is turned into text on your laptop. |
+| 🧠 **Understands everyday sentences** | "I'm starving, gonna grab a bite" pauses your session. Rules handle the common sentences instantly; a small local language model handles the rest. |
+| 👀 **Notices distractions** | During a session she reads the *title* of the window in front. If it does not fit your task, she hides (minimises) it and fills the screen for a few seconds. She never closes anything. |
+| 🎓 **Learns from you** | "When I say grind, I mean study for 45 minutes." She remembers it. Tell her "this is for study" and she stops flagging that page. |
+| ⏰ **Remembers** | Reminders, notes, and a session that picks up where it left off if you close her. |
+| 🫳 **Reacts to touch** | Poke her tummy, boing an antenna, pat her head, pick her up, shake her, push her into the edge of the screen. |
 
-6. **Run**:
-   ```powershell
-   python main.py
-   ```
-   You should see `Orange setup OK`.
+<p align="center">
+  <img src="docs/images/pokes.png" alt="Poke reactions" width="820">
+</p>
 
-## Wake word
+<p align="center">
+  <img src="docs/images/carried.png" alt="Reactions to being carried, shaken and squashed" width="700">
+</p>
 
-Orange sleeps until it hears the wake word (default: **"Hey Jarvis"**). This runs fully
-offline: a small model on your CPU scores each 80 ms of audio, and nothing is saved or sent.
-Set `wake.show_scores: true` in `config.yaml` to see live scores and tune `wake.threshold`.
+<sub>The pictures above are drawn by Orange's own code (`orange/face/`), captured as still frames. On screen she is always moving.</sub>
 
-### Custom wake word (e.g. "Hey Orange")
+## Private by design
 
-openWakeWord models are trained on **synthetic speech**, so you don't record yourself thousands of times:
+- **No cloud.** The language model runs locally through [Ollama](https://ollama.com). Speech-to-text runs locally through Whisper.
+- **No recordings.** Audio stays in memory and is never written to disk.
+- **Window titles only.** The distraction watch never looks inside a window, runs only during a study session, and saves nothing except pages you mark as "for study".
+- **One small database file** (`data/orange.db`, SQLite) holds your sessions, reminders, notes and taught phrases. It never leaves your machine and is excluded from git.
 
-1. A text-to-speech engine generates thousands of clips of the phrase ("hey orange")
-   in many different voices, speeds and accents.
-2. The clips are mixed with background noise and room echo, so the model works in real rooms.
-3. Lots of "negative" audio (normal talk, music, noise) teaches it what is NOT the wake word.
-4. A small classifier is trained on top of openWakeWord's shared speech-feature model.
-   The result is a single small `.onnx` file.
-
-The openWakeWord GitHub repo has a training notebook for this
-(https://github.com/dscripka/openWakeWord, see "Training New Models"). It runs on Google Colab's free GPU.
-
-To use your model:
-1. Put the file at `models/hey_orange.onnx`. Note that `models/` is in `.gitignore`.
-2. In `config.yaml`, set `wake.model: "models/hey_orange.onnx"`.
-
-## Project layout
+## How she works
 
 ```
-main.py          entry point
-config.yaml      all settings (no secrets)
-.env             your API key (never committed)
-goals.txt        your goals, used by study mode
-orange/          one file per part: wake, listen, stt, vision, brain, speak, study_mode, privacy
-tests/           tests
+ you speak / type / click
+          │
+          ▼
+   ┌─────────────┐   known sentence    ┌───────────────┐
+   │ taught       │ ─────────────────▶ │               │
+   │ phrases      │                    │    Buddy      │──▶ mood, timer, speech bubble
+   │ + rules      │   unknown sentence │ (study_mode)  │
+   └─────────────┘ ──▶ local brain ──▶ │               │
+                        (Ollama)       └───────┬───────┘
+                                               │
+   window in front ──▶ watch ──▶ brain judges ─┘──▶ hide the window
+                                               │
+                                          SQLite memory
 ```
 
-## Privacy
+| Part | File | What it is |
+|---|---|---|
+| Face | `orange/face/` | The character, drawn entirely in SVG + CSS (no image files), inside a transparent always-on-top PyQt6 window |
+| Buddy | `orange/study_mode.py` | Sessions, breaks, pauses, reminders. Plain rules, no window code, so it can be tested alone |
+| Rules | `orange/commands.py` | Turns a sentence into a command with pattern matching |
+| Brain | `orange/brain.py` | A small local model that may only pick one of Orange's own actions |
+| Watch | `orange/watch.py` | Reads the front window's title and hides distractions |
+| Voice | `orange/voice.py` | "Hey Orange" and speech-to-text |
+| Memory | `orange/store.py` | The only file that touches the database |
 
-- The API key lives only in `.env`.
-- Audio and photos stay in memory and are never saved to disk.
-- Orange prints a status line whenever the mic is recording or the camera is on.
+## Run her
+
+**Needs:** Windows 10 or 11, Python 3.11, a microphone (optional), and [Ollama](https://ollama.com) (optional, for the brain).
+
+```powershell
+git clone https://github.com/MythDroid/orange.git
+cd orange
+py -3.11 -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+ollama pull qwen3.5:2b
+python pet.py
+```
+
+Without Ollama she still works with her rules and taught phrases.
+Every feature has a switch in `config.yaml` (voice, "Hey Orange", the shortcut, the watch, her size).
+
+## Things to say
+
+| Say or type | She does |
+|---|---|
+| `study DL for 45 minutes` | Starts a session and studies with you |
+| `break 5` | A five minute break, then calls you back |
+| `I'm going for dinner` … `I'm back` | Pauses with no time limit, then carries on |
+| `remind me in 10 minutes to drink water` | Reminds you |
+| `remember that my exam is on Monday` | Saves it. `what do you remember` reads it back |
+| `when I say grind, I mean study for 45 minutes` | Learns your own phrase |
+| `this is for study` | Brings back a window she hid, and remembers it is fine |
+| `call me princess` | Uses that name |
+
+## Status
+
+Orange is an early personal project and is changing quickly.
+
+- Windows only for now. The distraction watch and the shortcut use Windows APIs.
+- The session logic, rules and memory are tested without a window, using a simulated clock.
+- The window, voice and touch reactions are tested by hand on one laptop.
+- A small local model makes mistakes. Where a wrong guess could start a timer, Orange's code double-checks it, and you can always correct her.
+
+Every change is listed in [CHANGELOG.md](CHANGELOG.md).
+
+## What is next
+
+- Activity buddy: she paints when you draw, types when you code
+- Teach mode: explain a topic to her out loud, and she asks you to teach it again a few days later
+- Idle life: fidgets when bored, a sleeping cap at night
+- A desktop shortcut so she starts with a double-click
+
+---
+
+<p align="center">Made by <a href="https://github.com/MythDroid">Mythrayee</a> 🍊</p>

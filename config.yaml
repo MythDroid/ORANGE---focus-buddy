@@ -7,6 +7,30 @@ assistant:
 user:
   name: "Mythrayee"            # Your name. Also helps speech-to-text spell it right
 
+pet:
+  width: 180                   # Orange's size in pixels. Smaller number = smaller Orange (was 220)
+
+watch:
+  enabled: true                # true = during a study session Orange notices distracting windows
+  hide_windows: true           # true = after the nudge she minimises the window (never closes it)
+  check_seconds: 1             # How often she glances at which window is in front
+  settle_seconds: 2            # A window must stay in front this long before she judges it
+  nudge_after_seconds: 20      # Only used if hiding is off, or if this is smaller than hide_after_seconds
+  hide_after_seconds: 0       # Seconds between spotting a distraction and hiding it. 0 = at once
+  repeat_hide_after_seconds: 0   # Same, for a window you reopened after she hid it
+  grow_seconds: 5              # When she hides a window she fills the whole screen this long. 0 = never
+  # Programs that are always fine during a session (she never asks the brain about these).
+  always_fine: ["code.exe", "cursor.exe", "antigravity.exe", "windowsterminal.exe", "powershell.exe",
+                "cmd.exe", "python.exe", "explorer.exe", "acrobat.exe", "acrord32.exe",
+                "sumatrapdf.exe", "winword.exe", "excel.exe", "powerpnt.exe", "onenote.exe",
+                "notepad.exe", "claude.exe"]
+
+voice:
+  enabled: true                # true = you can TALK to Orange. false = typing only (starts faster)
+  hey_orange: true             # true = saying "Hey Orange" wakes her (the mic stays on while she runs)
+  shortcut: true               # true = Ctrl+Space makes her listen, from any app
+
+# OLD, NOT USED BY ORANGE ANY MORE ("Hey Jarvis"). Only the old main.py still reads this block.
 wake:
   # TEMPORARY placeholder. Real wake word = "Hey Orange" (trained in Phase 5.5),
   # then this becomes "models/hey_orange.onnx". Built-in name OR path to a model file.
@@ -41,6 +65,16 @@ vision:
   camera_index: 0              # 0 = first webcam. Try 1 if you have a second camera
 
 brain:
+  # Orange's small LOCAL brain. It only helps her understand sentences her rules don't know.
+  # Runs through Ollama on this laptop, so nothing you type leaves it.
+  understand:
+    enabled: true                # false = rules and taught phrases only
+    model: "qwen3.5:2b"          # Any model you have pulled with: ollama pull <name>
+    url: "http://localhost:11434"   # Where the Ollama app listens (this laptop)
+    timeout_seconds: 25          # Give up if the brain takes longer than this
+    context: 2048                # Model's working space. Smaller = less graphics-card memory = faster
+    show_timing: true            # Print where the brain's time goes (for tuning). false = quiet
+
   # PLACEHOLDERS - wired up in Phase 5 (via LiteLLM). Model names get checked then.
   # Providers you can pick: "gemini", "groq", "ollama", "claude"
   # Keys for gemini/groq/claude go in .env. Ollama runs locally and needs no key.
