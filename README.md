@@ -83,8 +83,8 @@ She is a companion, not a tutor. She will not explain eigenvalues. She will sit 
 **Needs:** Windows 10 or 11, Python 3.11, a microphone (optional), and [Ollama](https://ollama.com) (optional, for the brain).
 
 ```powershell
-git clone https://github.com/MythDroid/orange.git
-cd orange
+git clone https://github.com/MythDroid/ORANGE---focus-buddy.git
+cd ORANGE---focus-buddy
 py -3.11 -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt

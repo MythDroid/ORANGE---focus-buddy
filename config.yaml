@@ -19,11 +19,12 @@ watch:
   hide_after_seconds: 0       # Seconds between spotting a distraction and hiding it. 0 = at once
   repeat_hide_after_seconds: 0   # Same, for a window you reopened after she hid it
   grow_seconds: 5              # When she hides a window she fills the whole screen this long. 0 = never
-  # Programs that are always fine during a session (she never asks the brain about these).
-  always_fine: ["code.exe", "cursor.exe", "antigravity.exe", "windowsterminal.exe", "powershell.exe",
-                "cmd.exe", "python.exe", "explorer.exe", "acrobat.exe", "acrord32.exe",
-                "sumatrapdf.exe", "winword.exe", "excel.exe", "powerpnt.exe", "onenote.exe",
-                "notepad.exe", "claude.exe"]
+  # The ONLY programs she judges. Anything not listed here is never hidden
+  # (Calculator, Snipping Tool, Settings, the Wi-Fi panel, your code editor, PDF reader...).
+  only_judge: ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe",
+               "whatsapp.exe", "whatsapp.root.exe", "discord.exe", "telegram.exe",
+               "spotify.exe", "netflix.exe", "steam.exe", "instagram.exe"]
+  always_fine: []              # Programs from the list above that you want left alone anyway
 
 voice:
   enabled: true                # true = you can TALK to Orange. false = typing only (starts faster)

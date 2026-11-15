@@ -17,7 +17,9 @@ If she is wrong, say or type "this is for study". She brings the window back and
 never flags that page again.
 
 Who decides "distracted"?
-    - apps in watch.always_fine (your code editor, PDF reader...) are always okay
+    - she only judges the programs in watch.only_judge (browsers, chat and video apps).
+      Calculator, Snipping Tool, Settings, your editor... are never judged at all
+    - in a browser, an empty new tab, a search, a login page and AI assistants are always okay
     - pages you allowed are always okay
     - otherwise the local brain judges the title against your task
     - with the brain off, a short built-in list of well-known time-sinks is used
@@ -32,6 +34,16 @@ IS_WINDOWS = sys.platform == "win32"
 _BROWSERS = ("chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe")
 _TIME_SINKS = re.compile(r"instagram|netflix|facebook|twitter|reddit|prime video|hotstar|amazon|"
                          r"flipkart|myntra|shorts|snapchat|pinterest|steam|9gag|tiktok", re.I)
+
+# Browser pages that are never a distraction, whatever the task: an empty new tab, a search,
+# a login or Wi-Fi sign-in page, browser settings, and AI assistants (you use them for doubts).
+_NEUTRAL_PAGES = re.compile(
+    r"^(?:new tab|new incognito tab|new inprivate tab|new private tab|about:blank|untitled|blank page|"
+    r"start|home|google|bing|duckduckgo|search)$"
+    r"|google search$|\bsearch results?\b|- bing$|- search$"
+    r"|\b(?:log ?in|sign ?in|sign ?up|wi-?fi|hotspot|captive|network|authenticat\w*|verify|otp)\b"
+    r"|\b(?:settings|downloads|history|extensions|bookmarks)$"
+    r"|chatgpt|claude|gemini|copilot|perplexity|notebooklm|deepseek", re.I)
 
 # On these sites, "the brain isn't sure" is treated as a distraction (a study video usually has a
 # title that is clearly about the subject; a vague title on a video site usually isn't study).
@@ -117,6 +129,9 @@ class Watcher:
         self.cfg, self.buddy, self.brain, self.store, self.face = cfg, buddy, brain, store, face
         self._front, self._hide, self._bring_back = front, hide, bring_back
         self.always_fine = {a.lower() for a in cfg.get("always_fine", [])}
+        # She only ever judges these programs (browsers and a few chat / entertainment apps).
+        # Everything else - Calculator, Snipping Tool, Settings, the Wi-Fi panel... - is left alone.
+        self.only_judge = {a.lower() for a in cfg.get("only_judge", _BROWSERS)}
         self.verdicts = {}        # (task, title) -> True (distracted) / False. Brain answers we remember
         self.seen = None          # (window id, title) currently in front
         self.seen_since = 0.0
@@ -220,8 +235,10 @@ class Watcher:
 
     def _is_distraction(self, task, window):
         app, title = window["app"], tidy_title(window["title"])
-        if app in self.always_fine or self.store.is_allowed_title(title):
-            return False
+        if app not in self.only_judge or app in self.always_fine:
+            return False                      # Not a program she judges (tools, system windows...)
+        if _NEUTRAL_PAGES.search(title) or self.store.is_allowed_title(title):
+            return False                      # New tab, search, login, AI assistant, or you allowed it
         if (task, title) not in self.verdicts:
             verdict = self.brain.judge(task, title, app) if self.brain and self.brain.enabled() else None
             if verdict is None:               # Brain off or unreachable: the short built-in list

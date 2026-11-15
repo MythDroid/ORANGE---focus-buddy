@@ -3,6 +3,17 @@
 Every change made to this project, newest first. One entry per work session.
 "NEW" = a file that did not exist before. "EDITED" = an existing file was changed.
 
+## 15 Nov 2026 (evening) - Watch fix: she was hiding Calculator, Snipping Tool and new tabs
+
+The watch judged EVERY window except a short list of work programs, so tools the brain did not
+recognise as "study" were hidden. It is now the other way round.
+
+- EDITED `orange/watch.py` - she only judges the programs in `watch.only_judge` (browsers and a
+  few chat / video apps). Everything else is never touched. Inside a browser, these are always
+  fine: an empty new tab, a search page, login / Wi-Fi sign-in pages, browser settings, and AI
+  assistants (ChatGPT, Claude, Gemini, Copilot, Perplexity...).
+- EDITED `config.yaml` (`watch:` block) - new `only_judge` list; `always_fine` is now empty.
+
 ## 15 Nov 2026 (later) - Getting ready for GitHub
 
 - EDITED `README.md` - rewritten for the new Orange (it still described the old voice
