@@ -2,7 +2,8 @@
 
 Only while a study session is running (not on a break, not paused), she looks at the
 TITLE of the window in front, for example "Funny cats - YouTube - Google Chrome".
-She never looks at what is inside the window, and titles are not saved anywhere
+For browsers she also reads the SITE NAME from the address bar (for example "chatgpt.com").
+She never looks at what is inside the window, and titles and sites are not saved anywhere
 (only the ones you tell her are fine, so she can remember that).
 
 What she does, in gentle steps:
@@ -19,7 +20,11 @@ never flags that page again.
 Who decides "distracted"?
     - she only judges the programs in watch.only_judge (browsers, chat and video apps).
       Calculator, Snipping Tool, Settings, your editor... are never judged at all
-    - in a browser, an empty new tab, a search, a login page and AI assistants are always okay
+    - in a browser, well-known study sites (Google Classroom, Docs, ChatGPT, Claude, LeetCode,
+      NPTEL...), an empty new tab, a search and a login page are always okay
+    - the brain is FAIR by default: a page is only a distraction if it is clearly entertainment.
+      On video sites (YouTube...) a video must clearly be about studying
+    - "this is for study" on a normal site allows the WHOLE site from then on
     - pages you allowed are always okay
     - otherwise the local brain judges the title against your task
     - with the brain off, a short built-in list of well-known time-sinks is used
@@ -43,7 +48,21 @@ _NEUTRAL_PAGES = re.compile(
     r"|google search$|\bsearch results?\b|- bing$|- search$"
     r"|\b(?:log ?in|sign ?in|sign ?up|wi-?fi|hotspot|captive|network|authenticat\w*|verify|otp)\b"
     r"|\b(?:settings|downloads|history|extensions|bookmarks)$"
-    r"|chatgpt|claude|gemini|copilot|perplexity|notebooklm|deepseek", re.I)
+    r"|chatgpt|claude|gemini|copilot|perplexity|notebooklm|deepseek"
+    # Study and work sites that put their own name in the tab title
+    r"|google classroom|classroom|google docs|google drive|google sheets|google slides|google colab|"
+    r"colaboratory|google scholar|wikipedia|github|stack overflow|leetcode|geeksforgeeks|hackerrank|"
+    r"kaggle|nptel|swayam|coursera|udemy|khan academy|w3schools|notion|overleaf|gate ?overflow", re.I)
+
+# Sites that are always fine, found from the address bar (works even when the tab title doesn't
+# say what the site is, e.g. a ChatGPT chat called "Eigenvalue doubt"). Add your own in config.yaml.
+_STUDY_SITES = ["chatgpt.com", "chat.openai.com", "claude.ai", "gemini.google.com", "copilot.microsoft.com",
+                "perplexity.ai", "chat.deepseek.com", "notebooklm.google.com", "classroom.google.com",
+                "docs.google.com", "drive.google.com", "colab.research.google.com", "scholar.google.com",
+                "meet.google.com", "wikipedia.org", "github.com", "stackoverflow.com", "leetcode.com",
+                "geeksforgeeks.org", "hackerrank.com", "kaggle.com", "nptel.ac.in", "swayam.gov.in",
+                "coursera.org", "udemy.com", "khanacademy.org", "w3schools.com", "notion.so",
+                "overleaf.com", "gateoverflow.in"]
 
 # On these sites, "the brain isn't sure" is treated as a distraction (a study video usually has a
 # title that is clearly about the subject; a vague title on a video site usually isn't study).
@@ -114,6 +133,53 @@ def bring_back_window(window_id):
         _user32.ShowWindow(window_id, 9)
 
 
+_uia = None   # Windows' accessibility helper. None = not made yet, False = not available on this laptop
+
+
+def site_of(window_id):
+    """The site open in a browser window, e.g. "chatgpt.com", read from its address bar. "" if unknown.
+
+    Uses Windows UI Automation, the same thing screen readers use to read the address bar.
+    Only the site name is kept (not the rest of the address), and it is never saved.
+    """
+    global _uia
+    if not IS_WINDOWS or _uia is False:
+        return ""
+    try:
+        if _uia is None:
+            import comtypes
+            import comtypes.client
+            comtypes.CoInitialize()                       # needed once in this thread
+            comtypes.client.GetModule("UIAutomationCore.dll")
+            from comtypes.gen.UIAutomationClient import CUIAutomation, IUIAutomation
+            _uia = comtypes.client.CreateObject(CUIAutomation, interface=IUIAutomation)
+    except Exception as err:
+        print(f"Can't read browser address bars on this laptop ({err!r}). Judging by tab title only.")
+        _uia = False
+        return ""
+    try:
+        window = _uia.ElementFromHandle(window_id)
+        # 30003 = "control type", 50004 = "text box", 30005 = "name", 30045 = "value", 4 = "anywhere inside"
+        is_box = _uia.CreatePropertyCondition(30003, 50004)
+        named = _uia.CreatePropertyCondition(30005, "Address and search bar")     # Chrome and Edge
+        box = window.FindFirst(4, _uia.CreateAndCondition(is_box, named)) or window.FindFirst(4, is_box)
+        return _domain(str(box.GetCurrentPropertyValue(30045) or "")) if box else ""
+    except Exception:
+        return ""                                         # window closed meanwhile, etc.
+
+
+def _domain(address):
+    """ "https://www.chatgpt.com/c/abc" -> "chatgpt.com". Typed search words (no dot) -> "". """
+    host = re.split(r"[/?#\s]", re.sub(r"^[a-z]+://", "", address.strip().lower()), maxsplit=1)[0]
+    if "." not in host:
+        return ""
+    return host[4:] if host.startswith("www.") else host
+
+
+def _site_in(site, sites):
+    return bool(site) and any(site == s or site.endswith("." + s) for s in sites)
+
+
 def tidy_title(title):
     """ "(3) Cats - YouTube - Google Chrome" -> "Cats - YouTube". Unread counts and browser names removed."""
     title = re.sub(r"^\(\d+\+?\)\s*", "", title)
@@ -125,9 +191,10 @@ def tidy_title(title):
 
 class Watcher:
     def __init__(self, cfg, buddy, brain, store, face, front=front_window,
-                 hide=hide_window, bring_back=bring_back_window):
+                 hide=hide_window, bring_back=bring_back_window, site=site_of):
         self.cfg, self.buddy, self.brain, self.store, self.face = cfg, buddy, brain, store, face
-        self._front, self._hide, self._bring_back = front, hide, bring_back
+        self._front, self._hide, self._bring_back, self._site = front, hide, bring_back, site
+        self.study_sites = _STUDY_SITES + [d.lower().strip() for d in cfg.get("study_sites", []) or []]
         self.always_fine = {a.lower() for a in cfg.get("always_fine", [])}
         # She only ever judges these programs (browsers and a few chat / entertainment apps).
         # Everything else - Calculator, Snipping Tool, Settings, the Wi-Fi panel... - is left alone.
@@ -237,27 +304,39 @@ class Watcher:
         app, title = window["app"], tidy_title(window["title"])
         if app not in self.only_judge or app in self.always_fine:
             return False                      # Not a program she judges (tools, system windows...)
-        if _NEUTRAL_PAGES.search(title) or self.store.is_allowed_title(title):
-            return False                      # New tab, search, login, AI assistant, or you allowed it
-        if (task, title) not in self.verdicts:
-            verdict = self.brain.judge(task, title, app) if self.brain and self.brain.enabled() else None
+        site = ""
+        if app in _BROWSERS and self.cfg.get("read_address", True):
+            site = self._site(window["id"])   # e.g. "chatgpt.com" ("" if it can't be read)
+        window["site"] = site                 # remembered for "this is for study"
+        if (_NEUTRAL_PAGES.search(title) or _site_in(site, self.study_sites)
+                or self.store.is_allowed_title(title) or (site and self.store.is_allowed_title("site:" + site))):
+            return False                      # A study site, new tab, search, login, AI chat, or you allowed it
+        if (task, title, site) not in self.verdicts:
+            verdict = self.brain.judge(task, title, app, site) if self.brain and self.brain.enabled() else None
             if verdict is None:               # Brain off or unreachable: the short built-in list
-                verdict = "distracted" if _TIME_SINKS.search(title) else "on_task"
-            if verdict == "unsure" and _VIDEO_SITES.search(title):
+                verdict = "distracted" if _TIME_SINKS.search(title + " " + site) else "on_task"
+            if verdict == "unsure" and (_VIDEO_SITES.search(title) or _VIDEO_SITES.search(site)):
                 verdict = "distracted"        # see _VIDEO_SITES above
-            print(f"Watch: \"{title}\" ({app}) during \"{task}\" -> {verdict}")
-            self.verdicts[(task, title)] = verdict == "distracted"   # elsewhere "unsure" counts as fine
-        return self.verdicts[(task, title)]
+            print(f"Watch: \"{title}\" ({site or app}) during \"{task}\" -> {verdict}")
+            self.verdicts[(task, title, site)] = verdict == "distracted"   # elsewhere "unsure" counts as fine
+        return self.verdicts[(task, title, site)]
 
     def allow_current(self):
         """You said "this is for study". Returns Orange's reply."""
         flagged = self.last_flagged
         if flagged is None:
             return "Okay! I wasn't worried about anything right now."
-        self.store.allow_title(tidy_title(flagged["title"]))
+        site = flagged.get("site", "")
+        whole_site = site and not _VIDEO_SITES.search(site)
+        if whole_site:
+            self.store.allow_title("site:" + site)          # every page on this site is fine from now on
+        else:
+            self.store.allow_title(tidy_title(flagged["title"]))   # on YouTube etc.: only this video
         if self.drift is not None and self.drift["hidden"]:
             self._bring_back(self.drift["id"])
         self._calm_down()
         self.last_flagged = None
         self.judged = False                   # Look again with fresh eyes
+        if whole_site:
+            return f"Oh, sorry! I'll remember that {site} is for study."
         return "Oh, sorry! I'll remember that one is for study."

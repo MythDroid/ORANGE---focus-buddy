@@ -3,6 +3,26 @@
 Every change made to this project, newest first. One entry per work session.
 "NEW" = a file that did not exist before. "EDITED" = an existing file was changed.
 
+## 19 Nov 2026 - Watch fix: she was hiding Google Classroom and ChatGPT
+
+Her rule was "a page is study only if its title clearly matches the task", so "Unit 1 - Google
+Classroom" during a "DL" session, or a ChatGPT chat with its own name, got hidden. She is now
+fair by default and knows study sites.
+
+- EDITED `orange/brain.py` - the page judge is fair: only clear entertainment is a distraction.
+  Class pages, notes, docs, email, coding sites and AI chats are fine even if they don't name the
+  task. YouTube videos still have to be clearly about studying. 14 examples, now with the site.
+- EDITED `orange/watch.py` - in browsers she also reads the SITE NAME from the address bar
+  (Windows UI Automation, like a screen reader; only the site name, never saved). Built-in list of
+  study sites (Classroom, Docs, Drive, ChatGPT, Claude, Gemini, LeetCode, NPTEL, GitHub,
+  Wikipedia...) that are always fine, plus title patterns for when the address can't be read.
+  "This is for study" now allows the whole site (on YouTube and other video sites: only that video).
+- EDITED `config.yaml` (`watch:` block) - new `read_address: true` and `study_sites: []`.
+- EDITED `README.md`, `memory.md` - privacy wording now says she reads the site name too.
+
+Status: judging logic tested with a pretend brain. Reading the address bar on Windows is NOT yet
+tested; if it fails she prints one line and falls back to titles only.
+
 ## 15 Nov 2026 (evening) - Watch fix: she was hiding Calculator, Snipping Tool and new tabs
 
 The watch judged EVERY window except a short list of work programs, so tools the brain did not

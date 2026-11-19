@@ -28,7 +28,7 @@ She is a companion, not a tutor. She will not explain eigenvalues. She will sit 
 | 📖 **Studies with you** | "Study DL for 45 minutes" and she puts on glasses and reads beside you, with a timer under her feet. |
 | 🗣️ **Listens** | Say "Hey Orange", double-click her, or press `Ctrl+Space`. Speech is turned into text on your laptop. |
 | 🧠 **Understands everyday sentences** | "I'm starving, gonna grab a bite" pauses your session. Rules handle the common sentences instantly; a small local language model handles the rest. |
-| 👀 **Notices distractions** | During a session she reads the *title* of the window in front. If it does not fit your task, she hides (minimises) it and fills the screen for a few seconds. She never closes anything. |
+| 👀 **Notices distractions** | During a session she reads the tab title and site name of the browser page in front. Study sites, AI chats and class pages are fine; if it is clearly entertainment, she hides (minimises) it and fills the screen for a few seconds. She never closes anything. |
 | 🎓 **Learns from you** | "When I say grind, I mean study for 45 minutes." She remembers it. Tell her "this is for study" and she stops flagging that page. |
 | ⏰ **Remembers** | Reminders, notes, and a session that picks up where it left off if you close her. |
 | 🫳 **Reacts to touch** | Poke her tummy, boing an antenna, pat her head, pick her up, shake her, push her into the edge of the screen. |
@@ -47,7 +47,7 @@ She is a companion, not a tutor. She will not explain eigenvalues. She will sit 
 
 - **No cloud.** The language model runs locally through [Ollama](https://ollama.com). Speech-to-text runs locally through Whisper.
 - **No recordings.** Audio stays in memory and is never written to disk.
-- **Window titles only.** The distraction watch never looks inside a window, runs only during a study session, and saves nothing except pages you mark as "for study".
+- **Titles and site names only.** The distraction watch reads the window title and, in browsers, the site name from the address bar (for example `chatgpt.com`). It never looks inside a page, runs only during a study session, and saves nothing except pages or sites you mark as "for study".
 - **One small database file** (`data/orange.db`, SQLite) holds your sessions, reminders, notes and taught phrases. It never leaves your machine and is excluded from git.
 
 ## How she works

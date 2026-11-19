@@ -178,31 +178,36 @@ _JUDGE_FORM = {
     "required": ["verdict"],
 }
 
-_JUDGE_RULES = """A student is in a focus session. Decide if the window in front fits the task. Answer only with JSON.
-- on_task: could reasonably help with the task: lectures, tutorials, documentation, notes, PDFs, code, search results, AI assistants, anything about the subject.
-- distracted: shopping, social media, cartoons, anime, TV shows, web series, movies, music videos, vlogs, comedy, memes, games, sports, celebrity or gossip content, a video site's home feed with no specific video. A video counts as on_task ONLY if its title is clearly about the task's subject.
-- unsure: the title is too vague to tell.
+_JUDGE_RULES = """A student is in a focus session. Decide if the browser page in front is a distraction. Answer only with JSON.
+Be fair: most pages a student opens while studying are fine. Only call a page a distraction when it is clearly entertainment.
+- distracted: clearly entertainment or time-wasting: shopping, social media feeds, cartoons, anime, TV shows, movies, web series, music videos, vlogs, comedy, memes, games, sports, gossip, or a video site's home feed.
+- on_task: anything else that could be part of studying or working: class pages, notes, documents, PDFs, slides, email, college or course portals, coding sites, documentation, search results, AI chat assistants (whatever the chat is called), and videos clearly about a study subject. The page does NOT have to mention the task.
+- unsure: you really cannot tell.
+On video sites (YouTube and similar) a video is on_task only if its title is clearly about a study subject.
 Examples:
-task "machine learning", window "Backpropagation explained - YouTube" -> {"verdict":"on_task"}
-task "machine learning", window "YouTube" -> {"verdict":"distracted"}
-task "machine learning", window "Amazon.in : wireless earbuds" -> {"verdict":"distracted"}
-task "machine learning", window "Shinchan New Episode in Hindi - YouTube" -> {"verdict":"distracted"}
-task "DSA", window "Doraemon full episode 12 - YouTube" -> {"verdict":"distracted"}
-task "study", window "Top 10 funniest moments - YouTube" -> {"verdict":"distracted"}
-task "DSA", window "Two Sum - LeetCode" -> {"verdict":"on_task"}
-task "DSA", window "Instagram" -> {"verdict":"distracted"}
-task "study", window "Unit 3 notes.pdf" -> {"verdict":"on_task"}
-task "drawing", window "Pinterest - character pose references" -> {"verdict":"on_task"}
-task "DL", window "New Tab" -> {"verdict":"unsure"}
+task "machine learning", page "Backpropagation explained - YouTube", site "youtube.com" -> {"verdict":"on_task"}
+task "machine learning", page "YouTube", site "youtube.com" -> {"verdict":"distracted"}
+task "machine learning", page "Shinchan New Episode in Hindi - YouTube", site "youtube.com" -> {"verdict":"distracted"}
+task "DSA", page "Doraemon full episode 12 - YouTube", site "unknown" -> {"verdict":"distracted"}
+task "machine learning", page "Amazon.in : wireless earbuds", site "amazon.in" -> {"verdict":"distracted"}
+task "DSA", page "Instagram", site "instagram.com" -> {"verdict":"distracted"}
+task "machine learning", page "IPL live score", site "cricbuzz.com" -> {"verdict":"distracted"}
+task "DL", page "Unit 1 - Google Classroom", site "classroom.google.com" -> {"verdict":"on_task"}
+task "DL", page "Orange Software Pet Timer", site "chatgpt.com" -> {"verdict":"on_task"}
+task "maths", page "Assignment 3 - Google Docs", site "unknown" -> {"verdict":"on_task"}
+task "study", page "Inbox (3) - Gmail", site "mail.google.com" -> {"verdict":"on_task"}
+task "DSA", page "Two Sum - LeetCode", site "leetcode.com" -> {"verdict":"on_task"}
+task "drawing", page "Pinterest - character pose references", site "pinterest.com" -> {"verdict":"on_task"}
+task "study", page "Unit 3 notes.pdf", site "unknown" -> {"verdict":"on_task"}
 """
 
 
-def judge(task, title, app=""):
-    """Does this window fit the task? Returns "on_task", "distracted", "unsure", or None (no brain)."""
+def judge(task, title, app="", site=""):
+    """Is this page a distraction? Returns "on_task", "distracted", "unsure", or None (no brain)."""
     if not enabled():
         return None
     raw = _chat([{"role": "system", "content": _JUDGE_RULES},
-                 {"role": "user", "content": f'task "{task}", window "{title[:150]}" (program: {app or "unknown"})'}],
+                 {"role": "user", "content": f'task "{task}", page "{title[:150]}", site "{site or "unknown"}"'}],
                 form=_JUDGE_FORM)
     if raw is None:
         return None

@@ -25,6 +25,10 @@ watch:
                "whatsapp.exe", "whatsapp.root.exe", "discord.exe", "telegram.exe",
                "spotify.exe", "netflix.exe", "steam.exe", "instagram.exe"]
   always_fine: []              # Programs from the list above that you want left alone anyway
+  read_address: true           # true = in browsers she also reads the SITE NAME from the address bar
+                               # (e.g. chatgpt.com, classroom.google.com). Never saved. false = tab title only
+  study_sites: []              # Extra sites that are always fine, e.g. ["rajalakshmi.org"].
+                               # Classroom, Docs, Drive, ChatGPT, Claude, Gemini, LeetCode, NPTEL... are built in
 
 voice:
   enabled: true                # true = you can TALK to Orange. false = typing only (starts faster)

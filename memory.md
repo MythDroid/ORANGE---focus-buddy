@@ -28,14 +28,16 @@ The day-by-day list of changes is in CHANGELOG.md.
   first 2.5 seconds of anything she hears (no separate wake-word model). "Hey Jarvis" is dropped.
 - **Ways to talk:** "Hey Orange", double-click, Ctrl+Space. A single click is a poke.
 - **Replies:** speech bubble. Speaking out loud is not built yet.
-- **Distraction watch:** only during a session; reads the front window's TITLE only; hides
-  (minimises) the window and never closes it; "this is for study" teaches her.
+- **Distraction watch:** only during a session; only judges browsers and a few chat / video apps;
+  reads the tab TITLE and, in browsers, the SITE NAME from the address bar; fair by default (only
+  clear entertainment is a distraction; YouTube videos must be clearly about study); hides
+  (minimises) the window and never closes it; "this is for study" allows the whole site.
 
 ## Privacy rules (always)
 
 - Nothing leaves the laptop. No cloud model, no telemetry.
 - Audio and photos stay in memory only, never saved to disk.
-- Window titles are not saved, except pages I mark as "for study".
+- Window titles and site names are not saved, except pages or sites I mark as "for study".
 - `data/` and `.env` are in `.gitignore`.
 - Print a status line whenever the mic is on.
 
