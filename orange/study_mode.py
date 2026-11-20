@@ -242,8 +242,20 @@ class Buddy:
         return f"Break time! {nice_duration(seconds)}. Stretch and drink some water."
 
     def _do_away(self, cmd, now):
-        """ "I'm gonna go have dinner": pause the session with no end time, until "I'm back"."""
+        """ "I'm gonna go have dinner" or "pause": pause the session with no end time, until "I'm back"."""
         what = cmd["what"]
+        if what == "pause":                       # the Pause button, or saying "pause"
+            if not self.session:
+                self._react("confused", 3, now)
+                return "There's no timer running to pause."
+            if self.paused_at:
+                return f"{self.session['task']} is already paused.\nRight-click me and pick Resume when you're ready."
+            if self.break_until:
+                self._do_resume(cmd, now, quiet=True)
+            self._set_pause(now)
+            self._react("happy", 3, now)
+            return (f"Paused {self.session['task']} with {nice_duration(self._remaining(now))} left.\n"
+                    "Right-click me and pick Resume when you're ready.")
         meals = ("dinner", "lunch", "breakfast", "brunch", "snack", "snacks", "food", "tea", "coffee")
         wish = f"Enjoy your {what}" if what in meals else "Enjoy" if what == "eat" else "Okay"
         self._react("happy", 3, now)
@@ -314,12 +326,31 @@ class Buddy:
         return f"{nice_duration(self._remaining(now))} left of {self.session['task']}."
 
     def _do_today(self, cmd, now):
-        total = self.store.focused_seconds_on(now.date())
-        if self.session:
-            total += self._focused(now)
+        """Today's summary: total focus time, then each subject, then distractions tucked away."""
+        subjects = {}                             # "dl" -> [name as you typed it, seconds]
+        tucked = 0
+        for row in self.store.sessions_on(now.date()):
+            if self.session and row["id"] == self.session["id"]:
+                seconds = self._focused(now)      # still running: count it up to now
+            elif row["status"] == "active":
+                continue
+            else:
+                seconds = row["focused_seconds"]
+            tucked += row["distractions"]
+            name = "Studying" if row["task"] == "study" else row["task"]
+            entry = subjects.setdefault(name.lower(), [name, 0])
+            entry[1] += seconds
+        total = sum(seconds for _, seconds in subjects.values())
         if total < 60:
             return "Nothing logged today yet. Shall we start?"
-        return f"You've focused for {nice_duration(total)} today."
+        self._react("happy", 3, now)
+        lines = [f"Today: {nice_duration(total)} of focus"]
+        for name, seconds in sorted(subjects.values(), key=lambda e: -e[1]):
+            if seconds >= 60:
+                lines.append(f"  \u2022 {name}: {nice_duration(seconds)}")
+        if tucked:
+            lines.append(f"Distractions tucked away: {tucked}")
+        return "\n".join(lines)
 
     def _do_remind(self, cmd, now):
         if cmd["when"] is None:

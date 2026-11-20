@@ -3,6 +3,18 @@
 Every change made to this project, newest first. One entry per work session.
 "NEW" = a file that did not exist before. "EDITED" = an existing file was changed.
 
+## 20 Nov 2026 - Pause / Resume button and today's summary
+
+- EDITED `orange/face/window.py` - right-click menu: "Pause timer" while a session runs,
+  "Resume timer" while paused, "End break" on a break; new "Today's summary" item.
+- EDITED `orange/commands.py` - understands "pause" (pause the timer) and "summary" /
+  "how was my day" (today's summary).
+- EDITED `orange/study_mode.py` - the pause message; the summary now lists each subject's
+  focus time (biggest first), counts the running session up to now, and shows how many
+  distractions were tucked away.
+- EDITED `orange/store.py` - new `sessions_on(day)`.
+- EDITED `README.md` - two new rows in "Things to say".
+
 ## 19 Nov 2026 - Watch fix: she was hiding Google Classroom and ChatGPT
 
 Her rule was "a page is study only if its title clearly matches the task", so "Unit 1 - Google

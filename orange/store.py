@@ -134,6 +134,12 @@ def focused_seconds_on(day):
     return rows[0]["total"]
 
 
+def sessions_on(day):
+    """Every session that started on this date (for the summary), oldest first."""
+    return _rows("SELECT id, task, focused_seconds, distractions, status FROM sessions "
+                 "WHERE started_at LIKE ? ORDER BY id", (day.isoformat() + "%",))
+
+
 # ---------- reminders ----------
 
 def add_reminder(text, due_at, now):

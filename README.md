@@ -101,6 +101,8 @@ Every feature has a switch in `config.yaml` (voice, "Hey Orange", the shortcut, 
 |---|---|
 | `study DL for 45 minutes` | Starts a session and studies with you |
 | `break 5` | A five minute break, then calls you back |
+| `pause` … `resume` | Pauses the timer until you come back (also in her right-click menu) |
+| `summary` | Today's focus time, per subject (also in her right-click menu) |
 | `I'm going for dinner` … `I'm back` | Pauses with no time limit, then carries on |
 | `remind me in 10 minutes to drink water` | Reminds you |
 | `remember that my exam is on Monday` | Saves it. `what do you remember` reads it back |

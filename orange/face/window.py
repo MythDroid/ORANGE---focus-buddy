@@ -595,12 +595,22 @@ class PetWindow(QWebEngineView):
         menu.addAction("Type to Orange...").triggered.connect(self.open_ask)
         menu.addSeparator()
         # These menu items simply "type" a sentence for you.
+        # The label under her says what the timer is doing, so the menu can offer the right button.
+        timer = self._timer_text or ""
+        if timer == "paused":
+            menu.addAction("\u25b6  Resume timer").triggered.connect(lambda _c=False: handle_text("resume"))
+        elif timer.startswith("break"):
+            menu.addAction("\u25b6  End break").triggered.connect(lambda _c=False: handle_text("resume"))
+        elif timer:
+            menu.addAction("\u23f8  Pause timer").triggered.connect(lambda _c=False: handle_text("pause"))
         for label, sentence in [("Study 25 minutes", "study for 25 minutes"),
                                 ("Study 45 minutes", "study for 45 minutes"),
                                 ("Study 1 hour", "study for 1 hour"),
                                 ("Take a 5 minute break", "break 5"),
                                 ("Stop session", "stop")]:
             menu.addAction(label).triggered.connect(lambda _c=False, s=sentence: handle_text(s))
+        menu.addSeparator()
+        menu.addAction("Today's summary").triggered.connect(lambda _c=False: handle_text("summary"))
         menu.addSeparator()
         moods = menu.addMenu("Mood (test)")
         for mood in MOODS:

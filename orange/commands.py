@@ -7,7 +7,8 @@ It does not matter whether the sentence was typed or spoken: speech-to-text give
 us a sentence, and it comes here the same way.
 
 Kinds: allow, teach, untaught, taught_list, study, break, away, resume, stop, bye, thanks, how_are_you, remind, remember, recall, forget_notes,
-       time_left, today, call_me, greet, unknown
+       time_left, today (also "summary"), call_me, greet, unknown
+("pause" comes back as kind away, what pause)
 """
 import re
 from datetime import datetime, timedelta
@@ -169,8 +170,11 @@ def parse(text, now=None):
     if m:
         return {"kind": "call_me", "name": m.group(1).strip(" .!?")}
 
-    if re.search(r"\bhow (?:much|long) (?:did|have) i (?:stud\w+|focus\w*|work\w*)", low):
+    if re.search(r"\bhow (?:much|long) (?:did|have) i (?:stud\w+|focus\w*|work\w*)", low) \
+            or re.search(r"\bsummary\b|\bhow (?:did|was) (?:my )?(?:day|today)\b", low):
         return {"kind": "today"}
+    if re.fullmatch(r"(?:please )?(?:pause|hold)(?: it| the| my)?(?: session| timer| studying| study)?(?: please)?", low):
+        return {"kind": "away", "what": "pause"}     # a pause with no time limit, until "resume"
     if re.search(r"\b(?:how (?:long|much time)|time left|time remaining)\b", low):
         return {"kind": "time_left"}
     if re.fullmatch(r"(?:i'm |i am )?(?:stop|end|finish|finished|done|cancel|quit)"
