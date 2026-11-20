@@ -32,7 +32,8 @@ from pathlib import Path
 from PyQt6.QtCore import QEvent, QObject, Qt, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWebEngineWidgets import QWebEngineView  # Must be imported before QApplication is made
-from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QMenu, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (QApplication, QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox,
+                             QVBoxLayout, QWidget)
 
 # Keep this list the same as MOODS in orange.js.
 MOODS = ["idle", "happy", "listening", "focused", "sleepy", "confused", "amazed",
@@ -115,6 +116,8 @@ _bridge = None         # Made by run(). None means the window isn't open yet
 _wanted_mood = "idle"  # The latest mood asked for (also used if asked before the window opens)
 _on_text = None        # Function that receives what you typed; must return Orange's reply (or None)
 _on_talk = None        # Optional function called on a double-click. Returns True if she started listening
+_subjects = None       # Optional function() -> {"current", "active", "archived", "seconds"} for the menu
+_on_subject = None     # Optional function(action, name) -> reply, for add / switch / archive / delete
 
 
 class Bubble(QWidget):
@@ -594,6 +597,7 @@ class PetWindow(QWebEngineView):
         menu = QMenu(self)
         menu.addAction("Type to Orange...").triggered.connect(self.open_ask)
         menu.addSeparator()
+        self._add_subjects_menu(menu)
         # These menu items simply "type" a sentence for you.
         # The label under her says what the timer is doing, so the menu can offer the right button.
         timer = self._timer_text or ""
@@ -621,6 +625,65 @@ class PetWindow(QWebEngineView):
         menu.addSeparator()
         menu.addAction("Quit").triggered.connect(QApplication.instance().quit)
         menu.exec(where)
+
+    # ----- the Subjects part of the menu -----
+
+    def _add_subjects_menu(self, menu):
+        if _subjects is None:
+            return
+        try:
+            data = _subjects()
+        except Exception as err:
+            print(f"Could not list subjects: {err!r}")
+            return
+        current = data["current"]
+        sub = menu.addMenu(f"Subject: {current}" if current else "Subjects")
+        for name in data["active"]:                       # click one to switch to it
+            item = sub.addAction(name)
+            item.setCheckable(True)
+            item.setChecked(name == current)
+            item.triggered.connect(lambda _c=False, n=name: subject_action("switch", n))
+        if data["active"]:
+            sub.addSeparator()
+        sub.addAction("+  Add subject...").triggered.connect(self._ask_new_subject)
+        if data["active"]:
+            manage = sub.addMenu("Archive or delete")
+            for name in data["active"]:
+                one = manage.addMenu(name)
+                one.addAction("Archive (hide it, keep its history)").triggered.connect(
+                    lambda _c=False, n=name: subject_action("archive", n))
+                one.addAction("Delete (remove it and its history)...").triggered.connect(
+                    lambda _c=False, n=name: self._confirm_delete(n, data["seconds"].get(n, 0)))
+        if data["archived"]:
+            old = sub.addMenu("Archived")
+            for name in data["archived"]:
+                one = old.addMenu(name)
+                one.addAction("Bring back").triggered.connect(lambda _c=False, n=name: subject_action("unarchive", n))
+                one.addAction("Delete (remove it and its history)...").triggered.connect(
+                    lambda _c=False, n=name: self._confirm_delete(n, data["seconds"].get(n, 0)))
+        menu.addSeparator()
+
+    # The two small dialogs below have NO parent window on purpose: with Orange as their parent,
+    # clicks inside them would count as pokes and drags on Orange.
+
+    def _ask_new_subject(self):
+        dialog = QInputDialog()
+        dialog.setWindowTitle("New subject")
+        dialog.setLabelText("Subject name (for example: Machine Learning)")
+        dialog.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        if dialog.exec() and dialog.textValue().strip():
+            subject_action("add", dialog.textValue().strip())
+
+    def _confirm_delete(self, name, seconds):
+        hours = f"{seconds / 3600:.1f} hours" if seconds >= 3600 else f"{int(seconds // 60)} minutes"
+        box = QMessageBox(QMessageBox.Icon.Question, "Delete subject",
+                          f"Delete \"{name}\" and its {hours} of study history?\n\n"
+                          "This can't be undone. (Archive hides it but keeps the history.)",
+                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        box.setDefaultButton(QMessageBox.StandardButton.No)
+        box.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        if box.exec() == QMessageBox.StandardButton.Yes:
+            subject_action("delete", name)
 
     # ----- remembering where Orange sits -----
 
@@ -700,6 +763,22 @@ def handle_text(text):
     threading.Thread(target=work, daemon=True).start()
 
 
+def subject_action(action, name):
+    """A Subjects menu choice. Runs in a helper thread like handle_text, then shows the reply."""
+    if _on_subject is None:
+        return
+
+    def work():
+        try:
+            reply = _on_subject(action, name)
+        except Exception as err:
+            print(f"Error with subject '{name}': {err!r}")
+            reply = "Oops, something went wrong. Look at the terminal."
+        say(reply)
+
+    threading.Thread(target=work, daemon=True).start()
+
+
 def loom(seconds=5):
     """Grow to fill the whole screen for a few seconds, then shrink back."""
     if _bridge is not None:
@@ -718,18 +797,20 @@ def quit():
         _bridge.quit.emit()
 
 
-def run(background=None, on_text=None, on_talk=None, width=None):
+def run(background=None, on_text=None, on_talk=None, width=None, subjects=None, on_subject=None):
     """Open the window and keep it alive. Returns only when Orange is closed.
 
     background: an optional function to run in a second thread while the window is open
                 (the timer loop now, the voice loop later).
     on_text:    an optional function(text) -> reply, called when you type to Orange.
     width:      her width in pixels (smaller number = smaller Orange).
+    subjects:   an optional function() that lists subjects for the right-click menu.
+    on_subject: an optional function(action, name) -> reply for the Subjects menu.
     on_talk:    an optional function() -> True/False, called on a double-click. It should make
                 Orange listen and return True. If it returns False (or is missing), the text box opens.
     """
-    global _bridge, _on_text, _on_talk, WIDTH, HEIGHT
-    _on_text, _on_talk = on_text, on_talk
+    global _bridge, _on_text, _on_talk, _subjects, _on_subject, WIDTH, HEIGHT
+    _on_text, _on_talk, _subjects, _on_subject = on_text, on_talk, subjects, on_subject
     if width:                            # Her size. The height follows, to keep her shape.
         WIDTH = max(90, min(int(width), 600))
         HEIGHT = round(WIDTH * 216 / 200)

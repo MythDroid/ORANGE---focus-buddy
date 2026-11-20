@@ -6,7 +6,7 @@
 It does not matter whether the sentence was typed or spoken: speech-to-text gives
 us a sentence, and it comes here the same way.
 
-Kinds: allow, teach, untaught, taught_list, study, break, away, resume, stop, bye, thanks, how_are_you, remind, remember, recall, forget_notes,
+Kinds: subject_add, subject_switch, subject_archive, subject_list, allow, teach, untaught, taught_list, study, break, away, resume, stop, bye, thanks, how_are_you, remind, remember, recall, forget_notes,
        time_left, today (also "summary"), call_me, greet, unknown
 ("pause" comes back as kind away, what pause)
 """
@@ -133,6 +133,19 @@ def parse(text, now=None):
     m = re.match(r"(?:forget|unlearn) (?:the )?phrase (.+)", text, re.I)
     if m:
         return {"kind": "untaught", "trigger": normalise(m.group(1))}
+
+    # --- subjects (named buckets, e.g. "Machine Learning") ---
+    m = re.match(r"(?:please\s+)?(?:add|new|create|make)(?: a)?(?: new)? subject(?: called| named)?\s+(.+)", text, re.I)
+    if m:
+        return {"kind": "subject_add", "name": _unquote(m.group(1)).strip(" .!?")}
+    m = re.match(r"(?:please\s+)?(?:switch|change|move)(?: the)?(?: subject)? to\s+(.+)", text, re.I)
+    if m:
+        return {"kind": "subject_switch", "name": _unquote(m.group(1)).strip(" .!?")}
+    m = re.match(r"(?:please\s+)?archive(?: the)?(?: subject)?\s+(.+)", text, re.I)
+    if m:
+        return {"kind": "subject_archive", "name": _unquote(m.group(1)).strip(" .!?")}
+    if re.fullmatch(r"(?:what are |show |list )?(?:my |the )?subjects", low):
+        return {"kind": "subject_list"}
 
     # --- "this is for study": Orange was wrong about a distraction ---
     if re.search(r"\b(?:this|that|it)(?: is|'s| was)? (?:for|part of|related to) (?:my |the |our )?"

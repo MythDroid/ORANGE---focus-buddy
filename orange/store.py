@@ -56,6 +56,12 @@ CREATE TABLE IF NOT EXISTS phrases (         -- sentences YOU taught Orange
 CREATE TABLE IF NOT EXISTS allowed_titles (  -- pages you told Orange are "for study"
     title TEXT PRIMARY KEY
 );
+CREATE TABLE IF NOT EXISTS subjects (        -- named buckets you study under, e.g. "Machine Learning"
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE COLLATE NOCASE,   -- "dl" and "DL" count as the same subject
+    created_at TEXT NOT NULL,
+    archived   INTEGER NOT NULL DEFAULT 0     -- 1 = hidden from the menu, history kept
+);
 CREATE TABLE IF NOT EXISTS settings (        -- small choices, e.g. what Orange calls you
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -74,6 +80,12 @@ def init(path=None):
     with _lock:
         _db.executescript(_TABLES)
         _db.commit()
+    if get_setting("subjects_ready") is None:
+        # First run with subjects: make one for every task you already studied, so the list
+        # isn't empty and old study time shows up under the right name.
+        _run("INSERT OR IGNORE INTO subjects (name, created_at) "
+             "SELECT task, MIN(started_at) FROM sessions WHERE task != 'study' GROUP BY task COLLATE NOCASE")
+        set_setting("subjects_ready", "1")
 
 
 def _run(sql, args=()):
@@ -138,6 +150,42 @@ def sessions_on(day):
     """Every session that started on this date (for the summary), oldest first."""
     return _rows("SELECT id, task, focused_seconds, distractions, status FROM sessions "
                  "WHERE started_at LIKE ? ORDER BY id", (day.isoformat() + "%",))
+
+
+# ---------- subjects ----------
+# A session's `task` column holds its subject's name, so sessions and subjects are matched by
+# name (ignoring capital letters).
+
+def add_subject(name, now):
+    _run("INSERT OR IGNORE INTO subjects (name, created_at) VALUES (?, ?)", (name.strip(), _t(now)))
+
+
+def find_subject(name):
+    """The subject with this name (any capitals), as a dict, or None."""
+    rows = _rows("SELECT * FROM subjects WHERE name = ? COLLATE NOCASE", (name.strip(),))
+    return rows[0] if rows else None
+
+
+def list_subjects(archived=False):
+    return [r["name"] for r in _rows("SELECT name FROM subjects WHERE archived = ? ORDER BY name COLLATE NOCASE",
+                                     (1 if archived else 0,))]
+
+
+def set_archived(name, archived):
+    _run("UPDATE subjects SET archived = ? WHERE name = ? COLLATE NOCASE", (1 if archived else 0, name))
+
+
+def delete_subject(name):
+    """Removes the subject AND all its finished study sessions. Cannot be undone."""
+    _run("DELETE FROM sessions WHERE task = ? COLLATE NOCASE AND status != 'active'", (name,))
+    _run("DELETE FROM subjects WHERE name = ? COLLATE NOCASE", (name,))
+
+
+def total_seconds_for(name):
+    """All focus time ever spent on this subject (finished sessions)."""
+    rows = _rows("SELECT COALESCE(SUM(focused_seconds), 0) AS total FROM sessions "
+                 "WHERE task = ? COLLATE NOCASE AND status != 'active'", (name,))
+    return rows[0]["total"]
 
 
 # ---------- reminders ----------

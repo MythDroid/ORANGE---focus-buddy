@@ -27,6 +27,10 @@ The day-by-day list of changes is in CHANGELOG.md.
 - **Voice in:** faster-whisper `base.en` on CPU. "Hey Orange" is done with speech-to-text on the
   first 2.5 seconds of anything she hears (no separate wake-word model). "Hey Jarvis" is dropped.
 - **Ways to talk:** "Hey Orange", double-click, Ctrl+Space. A single click is a poke.
+- **Subjects:** named buckets that last for months (e.g. "Machine Learning"). One is "current";
+  "study for 45 minutes" counts towards it. Saying a new subject name adds it automatically.
+  Switching mid-timer saves the minutes so far to the old subject. Archive (hide, keep history)
+  and Delete (remove with history, asks first) both exist. No dates or targets for now.
 - **Replies:** speech bubble. Speaking out loud is not built yet.
 - **Distraction watch:** only during a session; only judges browsers and a few chat / video apps;
   reads the tab TITLE and, in browsers, the SITE NAME from the address bar; fair by default (only

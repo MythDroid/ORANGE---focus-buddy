@@ -43,6 +43,15 @@ def nice_duration(seconds):
     return " ".join(parts)
 
 
+def short_duration(seconds):
+    """6000 -> "1 h 40 m", 2700 -> "45 m". For the summary, where space is tight."""
+    minutes = int(round(seconds / 60))
+    if minutes < 1:
+        return "under 1 m"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours} h {minutes} m" if hours and minutes else f"{hours} h" if hours else f"{minutes} m"
+
+
 def clock(seconds):
     """125 -> "2:05", 3725 -> "1:02:05"."""
     seconds = max(0, int(seconds))
@@ -209,11 +218,123 @@ class Buddy:
     def _react(self, mood, seconds, now):
         self.flash = (mood, now + timedelta(seconds=seconds))
 
+    # ---------- subjects ----------
+
+    def current_subject(self):
+        name = self.store.get_setting("current_subject", "")
+        row = self.store.find_subject(name) if name else None
+        return row["name"] if row and not row["archived"] else None
+
+    def _use_subject(self, name, now):
+        """Find this subject (any capitals) or create it, bring it back if archived, make it current.
+        Returns (the name as saved, a short note for the reply)."""
+        row = self.store.find_subject(name)
+        note = ""
+        if row is None:
+            self.store.add_subject(name, now)
+            row, note = self.store.find_subject(name), f"New subject: {name}. "
+        elif row["archived"]:
+            self.store.set_archived(row["name"], False)
+            note = f"Brought {row['name']} back from the archive. "
+        self.store.set_setting("current_subject", row["name"])
+        return row["name"], note
+
+    def _do_subject_add(self, cmd, now):
+        return self.subject_action("add", cmd["name"], now)
+
+    def _do_subject_switch(self, cmd, now):
+        return self.subject_action("switch", cmd["name"], now)
+
+    def _do_subject_archive(self, cmd, now):
+        return self.subject_action("archive", cmd["name"], now)
+
+    def _do_subject_list(self, cmd, now):
+        names, current = self.store.list_subjects(), self.current_subject()
+        if not names:
+            return "No subjects yet. Say: add subject Machine Learning"
+        return "Your subjects:\n" + "\n".join(("  \u2713 " if n == current else "  \u2022 ") + n for n in names)
+
+    def subjects_menu(self):
+        """For the right-click menu: what to list. Safe to call from the window."""
+        with self._lock:
+            active, archived = self.store.list_subjects(), self.store.list_subjects(archived=True)
+            return {"current": self.current_subject(), "active": active, "archived": archived,
+                    "seconds": {n: self.store.total_seconds_for(n) for n in active + archived}}
+
+    def subject_action(self, action, name, now=None):
+        """add / switch / archive / unarchive / delete a subject. Returns Orange's reply."""
+        now = now or datetime.now()
+        name = (name or "").strip()
+        if not name:
+            return "Which subject? Say the name too."
+        with self._lock:
+            self.last_active = now
+            row = self.store.find_subject(name)
+            running = self.session and self.session["task"].lower() == name.lower()
+
+            if action in ("add", "switch"):
+                if action == "switch" and row is None:
+                    self._react("confused", 4, now)
+                    return f"I don't have a subject called {name}. Say: add subject {name}"
+                if action == "add" and row is not None and not row["archived"]:
+                    saved, note = self._use_subject(name, now)
+                    return f"{saved} is already a subject. You're on it now."
+                return self._switch_to(name, now)
+
+            if row is None:
+                return f"I don't have a subject called {name}."
+            name = row["name"]
+            if action in ("archive", "delete") and running:
+                self._react("confused", 4, now)
+                return f"{name}'s timer is running. Stop it or switch subjects first."
+            if action == "archive":
+                self.store.set_archived(name, True)
+                if self.current_subject() is None:
+                    self.store.set_setting("current_subject", "")
+                return f"Archived {name}. Its history is kept; find it under Subjects \u2192 Archived."
+            if action == "unarchive":
+                self.store.set_archived(name, False)
+                return f"{name} is back in your subjects."
+            if action == "delete":
+                self.store.delete_subject(name)
+                if self.store.get_setting("current_subject", "").lower() == name.lower():
+                    self.store.set_setting("current_subject", "")
+                return f"Deleted {name} and its history."
+            return "I don't know how to do that."
+
+    def _switch_to(self, name, now):
+        """Make this subject current. If a timer is running, its minutes so far are saved to the
+        old subject and the rest of the timer carries on for the new one."""
+        saved, note = self._use_subject(name, now)
+        self._react("happy", 3, now)
+        if not self.session or self.session["task"].lower() == saved.lower():
+            return f"{note}You're on {saved} now. Say \"study for 45 minutes\" to start."
+        if self.break_until:
+            self._do_resume({}, now, quiet=True)
+        was_paused = self.paused_at is not None
+        left = self._remaining(now)
+        old, done = self.session["task"], self._end_session("stopped", now)
+        ends_at = now + timedelta(seconds=left)
+        sid = self.store.start_session(saved, int(left), now, ends_at)
+        self.session = {"id": sid, "task": saved, "planned": int(left), "ends_at": ends_at,
+                        "warned": left <= WARN_BEFORE_END}
+        if was_paused:
+            self._set_pause(now)               # still paused, now on the new subject
+        return (f"{note}Saved {nice_duration(done)} to {old}.\n"
+                f"Now on {saved}, {nice_duration(left)} left.")
+
+    # ---------- study sessions ----------
+
     def _do_study(self, cmd, now):
         seconds = cmd["seconds"]
         if seconds < 60 or seconds > MAX_SESSION_SECONDS:
             self._react("confused", 5, now)
             return "A session should be between 1 minute and 10 hours. Try: study DL for 45 minutes"
+        note = ""
+        if cmd["task"] == "study":                # no subject said: use the current one
+            cmd["task"] = self.current_subject() or "study"
+        else:                                     # a subject was said: find it or create it
+            cmd["task"], note = self._use_subject(cmd["task"], now)
         swapped = ""
         if self.session:
             self._end_session("stopped", now)
@@ -226,7 +347,7 @@ class Buddy:
         self._set_pause(None)
         self._react("happy", 3, now)
         what = "studying" if cmd["task"] == "study" else cmd["task"]
-        return f"{swapped}Okay {self.name}! {nice_duration(seconds)} of {what}. I'll study with you."
+        return f"{note}{swapped}Okay {self.name}! {nice_duration(seconds)} of {what}. I'll study with you."
 
     def _do_break(self, cmd, now):
         seconds = max(60, min(cmd["seconds"], 3600))
@@ -344,10 +465,17 @@ class Buddy:
         if total < 60:
             return "Nothing logged today yet. Shall we start?"
         self._react("happy", 3, now)
-        lines = [f"Today: {nice_duration(total)} of focus"]
+        lines = [f"Today: {short_duration(total)} of focus"]
         for name, seconds in sorted(subjects.values(), key=lambda e: -e[1]):
-            if seconds >= 60:
-                lines.append(f"  \u2022 {name}: {nice_duration(seconds)}")
+            if seconds < 60:
+                continue
+            ever = self.store.total_seconds_for(name)
+            if self.session and self.session["task"].lower() == name.lower():
+                ever += self._focused(now)
+            row = self.store.find_subject(name)
+            label = row["name"] if row else name
+            extra = f"  ({short_duration(ever)} in total)" if ever - seconds >= 60 else ""
+            lines.append(f"  \u2022 {label}: {short_duration(seconds)}{extra}")
         if tucked:
             lines.append(f"Distractions tucked away: {tucked}")
         return "\n".join(lines)

@@ -3,6 +3,29 @@
 Every change made to this project, newest first. One entry per work session.
 "NEW" = a file that did not exist before. "EDITED" = an existing file was changed.
 
+## 20 Nov 2026 (later) - Subjects
+
+Named buckets that last for months, like "Machine Learning". One subject is current, and every
+timer counts towards it.
+
+- EDITED `orange/store.py` - new table `subjects` (name, archived). On first run it makes a
+  subject for every task already studied. New functions: add, find, list, archive, delete
+  (removes the subject and its history), total time per subject.
+- EDITED `orange/study_mode.py` - "study for 45 minutes" uses the current subject;
+  "study DL for 45 minutes" adds DL if it's new (or brings it back from the archive) and makes it
+  current. Switching subjects mid-timer saves the minutes so far to the old subject and carries
+  the rest of the timer over. A running subject can't be archived or deleted. The summary shows
+  each subject's total time too.
+- EDITED `orange/commands.py` - "add subject X", "switch to X", "archive X", "my subjects".
+  Deleting is menu-only, with a confirmation, so a misheard word can't delete anything.
+- EDITED `orange/face/window.py` - right-click menu: "Subject: <current>" with the list (tick on
+  the current one), "+ Add subject...", "Archive or delete", "Archived" (bring back / delete).
+- EDITED `pet.py` - connects the menu to the Buddy.
+- EDITED `README.md`, `memory.md` - describe subjects.
+
+Status: the logic is tested with a pretend clock. The menu and its two small dialogs are NOT yet
+tested on Windows.
+
 ## 20 Nov 2026 - Pause / Resume button and today's summary
 
 - EDITED `orange/face/window.py` - right-click menu: "Pause timer" while a session runs,

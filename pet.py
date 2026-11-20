@@ -84,7 +84,8 @@ def main():
 
     # on_text: what you type goes to buddy.handle(), and its answer goes into the bubble.
     face.run(background=heartbeat, on_text=buddy.handle, on_talk=on_talk,
-             width=config.get("pet", {}).get("width"))
+             width=config.get("pet", {}).get("width"),
+             subjects=buddy.subjects_menu, on_subject=buddy.subject_action)
 
 
 if __name__ == "__main__":

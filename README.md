@@ -30,6 +30,7 @@ She is a companion, not a tutor. She will not explain eigenvalues. She will sit 
 | 🧠 **Understands everyday sentences** | "I'm starving, gonna grab a bite" pauses your session. Rules handle the common sentences instantly; a small local language model handles the rest. |
 | 👀 **Notices distractions** | During a session she reads the tab title and site name of the browser page in front. Study sites, AI chats and class pages are fine; if it is clearly entertainment, she hides (minimises) it and fills the screen for a few seconds. She never closes anything. |
 | 🎓 **Learns from you** | "When I say grind, I mean study for 45 minutes." She remembers it. Tell her "this is for study" and she stops flagging that page. |
+| 📚 **Subjects** | Keep named subjects for months ("Machine Learning", "GATE Maths"). Pick one from her menu and every timer counts towards it. Switch any time; archive or delete when you're done. |
 | ⏰ **Remembers** | Reminders, notes, and a session that picks up where it left off if you close her. |
 | 🫳 **Reacts to touch** | Poke her tummy, boing an antenna, pat her head, pick her up, shake her, push her into the edge of the screen. |
 
@@ -103,6 +104,9 @@ Every feature has a switch in `config.yaml` (voice, "Hey Orange", the shortcut, 
 | `break 5` | A five minute break, then calls you back |
 | `pause` … `resume` | Pauses the timer until you come back (also in her right-click menu) |
 | `summary` | Today's focus time, per subject (also in her right-click menu) |
+| `add subject Machine Learning` | Adds a subject and makes it the current one |
+| `switch to GATE maths` | Switches subject, even mid-timer (the minutes so far are saved to the old one) |
+| `archive DL` | Hides a subject from the menu but keeps its history |
 | `I'm going for dinner` … `I'm back` | Pauses with no time limit, then carries on |
 | `remind me in 10 minutes to drink water` | Reminds you |
 | `remember that my exam is on Monday` | Saves it. `what do you remember` reads it back |
